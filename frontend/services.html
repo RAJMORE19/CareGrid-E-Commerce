@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CareGrid Diagnostics | Explore 35 Clinical Diagnostic Packages</title>
+  <script>
+    if (localStorage.getItem('caregrid_auth') !== 'true') {
+      window.location.replace('/login.html');
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
+    body { background: #f8fafc; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; font-size: 13.5px; }
+
+    /* Top Utility Bar */
+    .topbar { background: #00172e; color: #94a3b8; font-size: 12px; padding: 6px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .topbar b { color: #f1f5f9; }
+
+    /* Navigation */
+    header { background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+    .nav { max-width: 1320px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; }
+    .logo { font-size: 22px; font-weight: 800; color: #003366; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+    .logo span { color: #00a896; }
+    .menu { display: flex; list-style: none; gap: 24px; font-weight: 600; font-size: 14px; }
+    .menu a { color: #334155; text-decoration: none; transition: color 0.2s; }
+    .menu a:hover { color: #00a896; }
+    .actions { display: flex; gap: 12px; align-items: center; }
+    .user-pill { background: #e6fffa; color: #003366; border: 1px solid #00a896; padding: 5px 14px; border-radius: 20px; font-weight: 700; font-size: 12.5px; text-decoration: none; display: flex; align-items: center; gap: 6px; }
+    .btn-logout { background: none; border: none; color: #ef4444; font-size: 11px; font-weight: bold; cursor: pointer; text-decoration: underline; margin-left: 4px; }
+    
+    .btn-cart { background: #003366; color: white; padding: 6px 16px; border-radius: 20px; font-weight: 700; text-decoration: none; font-size: 12.5px; display: flex; gap: 6px; align-items: center; position: relative; transition: transform 0.2s; }
+    .btn-cart.pulse { animation: cartBounce 0.4s ease; }
+    @keyframes cartBounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); background: #00a896; } }
+    .badge { background: #00a896; border-radius: 50%; padding: 2px 7px; font-size: 11px; }
+
+    /* Directory Banner */
+    .banner {
+      background: radial-gradient(circle at 85% 20%, rgba(0, 168, 150, 0.25) 0%, transparent 55%),
+                  linear-gradient(135deg, #001f3f 0%, #003366 50%, #004d61 100%);
+      color: white;
+      padding: 34px 24px;
+    }
+    .banner-container { max-width: 1320px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    .banner-title { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+    .banner-title span { color: #38bdf8; }
+    .banner-desc { font-size: 13.5px; color: #cbd5e1; }
+    .badge-count { background: rgba(0, 168, 150, 0.2); border: 1px solid #00a896; color: #5eead4; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 13px; }
+
+    /* Main Container */
+    .main { max-width: 1320px; width: 100%; margin: 24px auto 60px; padding: 0 24px; flex: 1; }
+
+    /* Filter & Search Bar */
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+    .filter-scroll {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .filter-pill {
+      background: white;
+      border: 1.5px solid #cbd5e1;
+      color: #475569;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-pill.active, .filter-pill:hover {
+      background: #003366;
+      color: white;
+      border-color: #003366;
+    }
+    .search-box {
+      padding: 9px 18px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 20px;
+      font-size: 13px;
+      outline: none;
+      width: 300px;
+      max-width: 100%;
+      transition: border-color 0.2s;
+    }
+    .search-box:focus {
+      border-color: #00a896;
+      box-shadow: 0 0 0 3px rgba(0,168,150,0.15);
+    }
+
+    /* 3-Column Grid for 35 Cards */
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    @media (max-width: 1024px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+      border-color: #00a896;
+    }
+    .card-body { padding: 18px; }
+    .tag {
+      background: #e6fffa;
+      color: #00a896;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+    .title { font-size: 16px; font-weight: 700; color: #003366; margin-bottom: 6px; line-height: 1.35; }
+    .desc { font-size: 12px; color: #64748b; margin-bottom: 12px; line-height: 1.45; min-height: 34px; }
+    
+    .meta-details {
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11.5px;
+      color: #475569;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      border: 1px solid #f1f5f9;
+    }
+    .meta-details span b { color: #003366; }
+
+    .price-strip {
+      border-top: 1px solid #f1f5f9;
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .price-val { font-size: 22px; font-weight: 800; color: #003366; }
+    .price-free { font-size: 11px; color: #16a34a; font-weight: 700; }
+
+    .card-footer {
+      padding: 12px 18px;
+      background: #f8fafc;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      gap: 10px;
+      border-radius: 0 0 12px 12px;
+    }
+    .btn-add {
+      flex: 1;
+      background: white;
+      border: 1.5px solid #003366;
+      color: #003366;
+      border-radius: 6px;
+      padding: 8px 0;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-add:hover { background: #003366; color: white; }
+    .btn-book {
+      flex: 1;
+      background: #00a896;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      padding: 8px 0;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-book:hover { background: #008f80; }
+
+    /* Flying Ball Animation */
+    .flying-ball {
+      position: fixed;
+      width: 24px;
+      height: 24px;
+      background: #00a896;
+      border: 2px solid white;
+      border-radius: 50%;
+      z-index: 9999;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 11px;
+      box-shadow: 0 4px 15px rgba(0,168,150,0.6);
+      transition: all 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Toast Notification */
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #002244;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border-left: 4px solid #00a896;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      font-size: 13px;
+      display: none;
+      z-index: 10000;
+      animation: fadeIn 0.3s;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Footer */
+    footer { background: #001f3f; color: #94a3b8; padding: 40px 24px 20px; margin-top: auto; border-top: 3px solid #00a896; width: 100%; font-size: 12px; }
+    .footer-container { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: 1.8fr 1fr 1fr 1.6fr; gap: 35px; }
+    .footer-col h4 { color: #fff; font-size: 14px; margin-bottom: 12px; }
+    .footer-col ul { list-style: none; }
+    .footer-col ul li { margin-bottom: 8px; }
+    .footer-col ul li a { color: #cbd5e1; text-decoration: none; }
+    .footer-col ul li a:hover { color: #00a896; }
+    .footer-bottom { max-width: 1320px; margin: 25px auto 0; padding-top: 15px; border-top: 1px solid #1e3a5f; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div>📞 Helpline: <b>+91 6353468394</b> | ✉️ Support: <b>rajmore2023@gmail.com</b></div>
+    <div><span>✓ NABL & ICMR Accredited Labs</span> | Ahmedabad Hub</div>
+  </div>
+
+  <header>
+    <div class="nav">
+      <a href="/index.html" class="logo">CARE<span>GRID</span> <small style="font-size:11px; color:#64748b; font-weight:400;">| ALL SERVICES</small></a>
+      <ul class="menu">
+        <li><a href="/index.html">Home</a></li>
+        <li><a href="/services.html" style="color:#00a896; font-weight:bold;">All 35 Services</a></li>
+        <li><a href="/cart.html">Shopping Cart</a></li>
+        <li><a href="/orders.html">My Bookings</a></li>
+      </ul>
+      <div class="actions">
+        <a href="/orders.html" class="user-pill">
+          👤 <span id="userNameNav">Raj More</span>
+          <button class="btn-logout" onclick="logout(event)">Logout</button>
+        </a>
+        <a href="/cart.html" class="btn-cart" id="cartNavBtn">Cart <span class="badge" id="cartBadge">0</span></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Banner -->
+  <section class="banner">
+    <div class="banner-container">
+      <div>
+        <h1 class="banner-title">Complete <span>35 Clinical Diagnostic</span> Profiles</h1>
+        <p class="banner-desc">Curated by senior pathologists. Select tests for free doorstep vacuum-sealed sample pickup.</p>
+      </div>
+      <div class="badge-count">
+        ✓ 35 Verified Tests Live
+      </div>
+    </div>
+  </section>
+
+  <!-- Directory Main Section -->
+  <div class="main">
+    <div class="controls-bar">
+      <!-- Category Filters -->
+      <div class="filter-scroll">
+        <button class="filter-pill active" onclick="applyFilter('All', this)">All (35)</button>
+        <button class="filter-pill" onclick="applyFilter('Preventive', this)">Preventive & Wellness</button>
+        <button class="filter-pill" onclick="applyFilter('Heart', this)">Heart & Cardiac</button>
+        <button class="filter-pill" onclick="applyFilter('Diabetes', this)">Diabetes Care</button>
+        <button class="filter-pill" onclick="applyFilter('Thyroid', this)">Thyroid Panels</button>
+        <button class="filter-pill" onclick="applyFilter('Vitamins', this)">Vitamins & Bone</button>
+        <button class="filter-pill" onclick="applyFilter('Kidney', this)">Kidney & Renal</button>
+        <button class="filter-pill" onclick="applyFilter('Hematology', this)">Hematology / Blood</button>
+        <button class="filter-pill" onclick="applyFilter('Liver', this)">Liver Function</button>
+      </div>
+
+      <!-- Real-Time Search -->
+      <input type="text" class="search-box" id="testSearch" placeholder="🔍 Search by name (e.g., CBC, D3, LFT, KFT)..." onkeyup="filterTests()">
+    </div>
+
+    <!-- Active Result Statistics -->
+    <div style="font-size:13px; color:#64748b; margin-bottom:14px;">
+      Showing <b id="matchCount" style="color:#003366;">35</b> diagnostic packages
+    </div>
+
+    <!-- 35 Cards Grid -->
+    <div class="grid" id="servicesGrid"></div>
+  </div>
+
+  <div class="toast-msg" id="toastMsg"></div>
+
+  <footer>
+    <div class="footer-container">
+      <div class="footer-col">
+        <h3 style="color:#fff; font-size:18px; margin-bottom:8px;">CARE<span style="color:#00a896;">GRID</span></h3>
+        <p style="line-height:1.6; color:#94a3b8;">Accredited diagnostic laboratory network offering 35 comprehensive test profiles with doorstep cold-chain sample pickup.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Popular Profiles</h4>
+        <ul>
+          <li><a href="javascript:void(0)" onclick="quickSearch('CBC')">Complete Blood Count (CBC)</a></li>
+          <li><a href="javascript:void(0)" onclick="quickSearch('Lipid')">Comprehensive Lipid Profile</a></li>
+          <li><a href="javascript:void(0)" onclick="quickSearch('Thyroid')">Advanced Thyroid Panel</a></li>
+          <li><a href="javascript:void(0)" onclick="quickSearch('D3')">Vitamin D3 & B12 Panel</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Patient Support</h4>
+        <ul>
+          <li><a href="/cart.html">View Cart</a></li>
+          <li><a href="/orders.html">My Scheduled Bookings</a></li>
+          <li><a href="/orders.html">Cancelled Bookings Record</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Central Helpdesk</h4>
+        <p style="color:#cbd5e1; line-height:1.8;">
+          📞 <b>Helpline:</b> +91 6353468394<br>
+          ✉️ <b>Support:</b> rajmore2023@gmail.com<br>
+          📍 <b>Central Lab:</b> SG Highway, Ahmedabad, Gujarat - 380054
+        </p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 CareGrid Healthcare Technologies Pvt Ltd. All rights reserved.</div>
+      <div>Helpline: +91 6353468394 | rajmore2023@gmail.com</div>
+    </div>
+  </footer>
+
+  <script>
+    let allCatalog = [];
+    let selectedCategory = 'All';
+
+    document.getElementById('userNameNav').innerText = localStorage.getItem('caregrid_user_name') || 'Raj More';
+    let cart = JSON.parse(localStorage.getItem('caregrid_cart') || '[]');
+    document.getElementById('cartBadge').innerText = cart.length;
+
+    // Check URL parameters for search query from home
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    if (searchParam) {
+      document.getElementById('testSearch').value = searchParam;
+    }
+
+    // Fetch All 35 Diagnostic Tests from Catalog Service
+    fetch('/api/catalog/products')
+      .then(res => res.json())
+      .then(data => {
+        allCatalog = data.tests;
+        renderGrid();
+      })
+      .catch(() => {
+        document.getElementById('servicesGrid').innerHTML = '<p style="color:red; grid-column:span 3; padding:40px 0; text-align:center;">Catalog service unavailable. Please check connectivity.</p>';
+      });
+
+    function renderGrid() {
+      const grid = document.getElementById('servicesGrid');
+      const searchTxt = document.getElementById('testSearch').value.toLowerCase().trim();
+
+      const filtered = allCatalog.filter(t => {
+        const matchesCategory = (selectedCategory === 'All') || (t.category === selectedCategory);
+        const matchesSearch = t.name.toLowerCase().includes(searchTxt) || t.parameters.toLowerCase().includes(searchTxt) || t.category.toLowerCase().includes(searchTxt);
+        return matchesCategory && matchesSearch;
+      });
+
+      document.getElementById('matchCount').innerText = filtered.length;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '<p style="color:#64748b; padding:50px 0; grid-column: span 3; text-align:center; font-size:15px;">No diagnostic packages found matching your criteria.</p>';
+        return;
+      }
+
+      let html = '';
+      filtered.forEach((test, idx) => {
+        // Fasting & specimen mapping based on clinical category
+        const fastingText = (test.category === 'Heart' || test.category === 'Diabetes' || test.name.includes('Fasting') || test.name.includes('Full Body')) ? '8-10 Hours Fasting' : 'No Fasting Required';
+        const sampleText = test.name.includes('Urine') ? 'Urine Sample' : 'EDTA / Serum Blood';
+
+        html += `
+          <div class="card" id="card-${test.id}">
+            <div class="card-body">
+              <span class="tag">${test.category}</span>
+              <div class="title">${test.name}</div>
+              <div class="desc">🩺 ${test.parameters}</div>
+
+              <div class="meta-details">
+                <span><b>Specimen:</b> ${sampleText}</span>
+                <span><b>Fasting:</b> ${fastingText}</span>
+                <span><b>Report TAT:</b> Within 6 Hours</span>
+              </div>
+
+              <div class="price-strip">
+                <div>
+                  <span style="font-size:10px; color:#64748b; text-transform:uppercase;">Package Rate</span><br>
+                  <span class="price-val">${test.price}</span>
+                </div>
+                <span class="price-free">● Free Home Pickup</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <button class="btn-add" onclick="animateAddToCart(event, '${test.name}', ${test.numPrice})">Add to Cart</button>
+              <button class="btn-book" onclick="instantBook('${test.name}', ${test.numPrice})">Instant Book</button>
+            </div>
+          </div>
+        `;
+      });
+      grid.innerHTML = html;
+    }
+
+    // Flying Ball Particle Animation to Cart
+    function animateAddToCart(event, name, price) {
+      const btn = event.currentTarget;
+      const btnRect = btn.getBoundingClientRect();
+      const cartBtn = document.getElementById('cartNavBtn');
+      const cartRect = cartBtn.getBoundingClientRect();
+
+      const ball = document.createElement('div');
+      ball.className = 'flying-ball';
+      ball.innerHTML = '🧪';
+      ball.style.left = `${btnRect.left + btnRect.width / 2}px`;
+      ball.style.top = `${btnRect.top + btnRect.height / 2}px`;
+      document.body.appendChild(ball);
+
+      requestAnimationFrame(() => {
+        ball.style.left = `${cartRect.left + cartRect.width / 2 - 12}px`;
+        ball.style.top = `${cartRect.top + cartRect.height / 2 - 12}px`;
+        ball.style.transform = 'scale(0.4)';
+        ball.style.opacity = '0.5';
+      });
+
+      setTimeout(() => {
+        ball.remove();
+        cart.push({ name, price });
+        localStorage.setItem('caregrid_cart', JSON.stringify(cart));
+        document.getElementById('cartBadge').innerText = cart.length;
+
+        cartBtn.classList.add('pulse');
+        setTimeout(() => cartBtn.classList.remove('pulse'), 400);
+
+        showToast(`✔ ${name} added to cart!`);
+      }, 650);
+    }
+
+    function instantBook(name, price) {
+      cart = [{ name, price }];
+      localStorage.setItem('caregrid_cart', JSON.stringify(cart));
+      window.location.href = '/cart.html';
+    }
+
+    function applyFilter(cat, btn) {
+      selectedCategory = cat;
+      document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderGrid();
+    }
+
+    function filterTests() {
+      renderGrid();
+    }
+
+    function quickSearch(q) {
+      document.getElementById('testSearch').value = q;
+      selectedCategory = 'All';
+      document.querySelectorAll('.filter-pill').forEach(b => b.classList.toggle('active', b.innerText.includes('All')));
+      renderGrid();
+      window.scrollTo({ top: 180, behavior: 'smooth' });
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toastMsg');
+      toast.innerText = text;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2200);
+    }
+
+    function logout(e) {
+      e.preventDefault();
+      localStorage.removeItem('caregrid_auth');
+      window.location.href = '/login.html';
+    }
+  </script>
+</body>
+</html>
