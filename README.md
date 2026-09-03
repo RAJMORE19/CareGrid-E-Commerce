@@ -1,3 +1,6 @@
+<img width="1535" height="1024" alt="CareGrid-E-Commerce" src="https://github.com/user-attachments/assets/9a6487fe-3a38-449f-a2a6-47e0f3db7b78" />
+
+
 # CareGrid Diagnostics - Enterprise DevOps Roadmap
 
 Welcome to the official DevOps roadmap and architecture evolution guide for **CareGrid Diagnostics**. This document outlines the structured phases from local containerization to a fully automated, cloud-native production environment.
@@ -10,15 +13,15 @@ Welcome to the official DevOps roadmap and architecture evolution guide for **Ca
 * **Objective:** Establish a clean, professional, and scalable enterprise repository structure.
 * **Implementation:** Designed dedicated directories including `00-docs-and-console-guide`, `01-infrastructure-terraform`, `02-microservices`, `03-ci-cd-pipelines`, `04-gitops-manifests`, and `05-observability`.
 
-### Phase 1: Local Docker Compose (Zero Cloud Cost)
+### Phase 1: Local Docker Compose
 * **Objective:** Containerize and verify all platform components locally before incurring cloud expenditure.
 * **Implementation:** Deployed 6 autonomous microservices (`Auth`, `Catalog`, `Cart`, `Booking`, `Payment`, `Notification`), a responsive React/HTML frontend, PostgreSQL database, and Redis caching orchestrated seamlessly via `docker-compose.yml`.
 
-### Phase 2: Core Cloud Fabric & IAM via Terraform (AWS Free Tier Friendly)
+### Phase 2: Core Cloud Fabric & IAM via Terraform
 * **Objective:** Transition from local infrastructure to Infrastructure as Code (IaC).
 * **Implementation:** Provisioning secure AWS cloud networking, custom VPCs, subnets, security groups, and granular IAM roles using Terraform.
 
-### Phase 3: Production Orchestration & Compute (AWS EKS / ECS)
+### Phase 3: Production Orchestration & Compute
 * **Objective:** Scale microservices for high availability and enterprise production workloads.
 * **Implementation:** Deploying containerized microservices onto production-grade Kubernetes (EKS) clusters or AWS ECS Fargate utilizing Helm charts.
 
