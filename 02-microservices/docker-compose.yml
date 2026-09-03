@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. DATA FABRIC (Databases & Storage)
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: caregrid-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: caregrid
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: caregrid_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caregrid -d caregrid_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: caregrid-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: caregrid-dynamodb
+    restart: always
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+
+  minio:
+    image: minio/minio:latest
+    container_name: caregrid-s3-minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  # ==========================================
+  # 2. APPLICATION MICROSERVICES
+  # ==========================================
+  auth-service:
+    build: ./auth-service
+    container_name: caregrid-auth
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      - DATABASE_URL=postgres://caregrid:secretpassword@postgres:5432/caregrid_db
+      - PORT=5001
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  cart-service:
+    build: ./cart-service
+    container_name: caregrid-cart
+    restart: always
+    ports:
+      - "5002:5002"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=5002
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  catalog-service:
+    build: ./catalog-service
+    container_name: caregrid-catalog
+    restart: always
+    ports:
+      - "5003:5003"
+    environment:
+      - DATABASE_URL=postgres://caregrid:secretpassword@postgres:5432/caregrid_db
+      - PORT=5003
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  booking-service:
+    build: ./booking-service
+    container_name: caregrid-booking
+    restart: always
+    ports:
+      - "5004:5004"
+    environment:
+      - DATABASE_URL=postgres://caregrid:secretpassword@postgres:5432/caregrid_db
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - PORT=5004
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dynamodb-local:
+        condition: service_started
+
+  payment-service:
+    build: ./payment-service
+    container_name: caregrid-payment
+    restart: always
+    ports:
+      - "5005:5005"
+    environment:
+      - PORT=5005
+
+  notification-service:
+    build: ./notification-service
+    container_name: caregrid-notification
+    restart: always
+    ports:
+      - "5006:5006"
+    environment:
+      - PORT=5006
+
+  # ==========================================
+  # 3. FRONTEND UI
+  # ==========================================
+  frontend:
+    build: ./frontend
+    container_name: caregrid-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - auth-service
+      - catalog-service
+      - cart-service
+      - booking-service
+      - payment-service
+      - notification-service
+
+# Persistent Storage Volumes
+volumes:
+  postgres_data:
+  minio_data:

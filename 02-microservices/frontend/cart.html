@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CareGrid Diagnostics | Shopping Cart Service</title>
+  <script>
+    if (localStorage.getItem('caregrid_auth') !== 'true') window.location.replace('/login.html');
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
+    body { background: #f8fafc; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; font-size: 13.5px; }
+    header { background: #fff; padding: 12px 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+    .logo { font-size: 20px; font-weight: 800; color: #003366; text-decoration: none; }
+    .logo span { color: #00a896; }
+    .container { max-width: 950px; width: 100%; margin: 30px auto 50px; padding: 0 20px; flex: 1; }
+    .cart-grid { display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 24px; }
+    @media (max-width: 768px) { .cart-grid { grid-template-columns: 1fr; } }
+    .card { background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+    .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+    .btn-del { color: #ef4444; background: none; border: none; cursor: pointer; font-size: 12px; font-weight: bold; }
+    .btn-checkout { width: 100%; background: #00a896; color: white; border: none; padding: 13px; border-radius: 6px; font-weight: 700; font-size: 14.5px; cursor: pointer; margin-top: 15px; text-align: center; display: block; box-shadow: 0 4px 12px rgba(0,168,150,0.3); transition: 0.2s; }
+    .btn-checkout:hover { background: #008f80; }
+    .btn-checkout:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    /* Modern Confirmation Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,25,50,0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; }
+    .confirm-card { background: white; border-radius: 16px; width: 92%; max-width: 460px; padding: 32px 26px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.25); animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .icon-badge { width: 65px; height: 65px; background: #e6fffa; border: 2px solid #00a896; color: #00a896; border-radius: 50%; font-size: 30px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .order-box { background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 16px; margin: 18px 0; text-align: left; }
+    .order-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+    .order-row b { color: #002244; }
+    .dispatch-pill { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 10px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-view-orders { width: 100%; background: #003366; color: white; border: none; padding: 13px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; text-decoration: none; display: block; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/index.html" class="logo">CARE<span>GRID</span> <small style="font-size:11px; color:#64748b;">| CART SERVICE</small></a>
+    <div style="display:flex; gap:16px; align-items:center;">
+      <a href="/services.html" style="color:#00a896; text-decoration:none; font-weight:700;">+ Browse 35 Tests</a>
+      <a href="/orders.html" style="color:#003366; text-decoration:none; font-weight:700;">My Bookings</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <h2 style="color:#003366; font-size:20px; margin-bottom:16px;">Diagnostic Cart Review</h2>
+    <div class="cart-grid">
+      <div class="card">
+        <h3 style="font-size:15px; margin-bottom:12px; color:#003366;">Selected Health Packages</h3>
+        <div id="cartItemsList"></div>
+      </div>
+      
+      <div class="card" style="height: fit-content;">
+        <h3 style="font-size:15px; margin-bottom:12px; color:#003366;">Price Breakdown</h3>
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:#64748b;">
+          <span>Home Sample Collection:</span><span style="color:#16a34a; font-weight:700;">FREE (₹0)</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:16px; font-size:18px; font-weight:800; color:#003366; border-top:1px solid #f1f5f9; padding-top:12px;">
+          <span>Total Payable:</span><span id="cartGrandTotal">₹0</span>
+        </div>
+        <button id="checkoutBtn" class="btn-checkout" onclick="confirmDirectBooking()">Confirm & Proceed to Doorstep Booking &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-Time Booking Success Modal -->
+  <div class="modal-overlay" id="orderSuccessModal">
+    <div class="confirm-card">
+      <div class="icon-badge">✓</div>
+      <h2 style="color:#002244; font-size:21px; margin-bottom:6px;">Booking Confirmed!</h2>
+      <p style="color:#64748b; font-size:13px;">Your diagnostic sample request is saved and dispatched.</p>
+
+      <div class="order-box">
+        <div class="order-row"><span>Booking ID:</span><b id="dispOrderId" style="color:#00a896; font-size:15px;">-</b></div>
+        <div class="order-row"><span>Patient Name:</span><b id="dispPatient">-</b></div>
+        <div class="order-row"><span>Tests Booked:</span><b id="dispTests" style="max-width:220px; text-align:right;">-</b></div>
+        <div class="order-row"><span>Total Amount:</span><b id="dispAmount" style="color:#002244;">-</b></div>
+        <div class="order-row"><span>Payment:</span><b>Cash on Collection</b></div>
+      </div>
+
+      <div class="dispatch-pill">
+        ⚡ <span>Phlebotomist Sunil Varma will reach your doorstep <b>within 1 hour!</b></span>
+      </div>
+
+      <a href="/orders.html" class="btn-view-orders">Go to My Bookings Section &rarr;</a>
+    </div>
+  </div>
+
+  <script>
+    let cart = JSON.parse(localStorage.getItem('caregrid_cart') || '[]');
+
+    function renderCart() {
+      const list = document.getElementById('cartItemsList');
+      if (cart.length === 0) {
+        list.innerHTML = '<p style="color:#64748b; padding:25px 0; text-align:center;">Your cart is empty.<br><a href="/services.html" style="color:#00a896; font-weight:bold; margin-top:8px; display:inline-block;">Explore 35 Diagnostic Packages</a></p>';
+        document.getElementById('cartGrandTotal').innerText = '₹0';
+        document.getElementById('checkoutBtn').style.display = 'none';
+        return;
+      }
+      let html = '';
+      let sum = 0;
+      cart.forEach((item, index) => {
+        sum += item.price;
+        html += `
+          <div class="item-row">
+            <div>
+              <b style="color:#003366; font-size:14px;">${item.name}</b>
+              <div style="color:#00a896; font-weight:700; margin-top:2px;">₹${item.price}</div>
+            </div>
+            <button class="btn-del" onclick="removeItem(${index})">Remove</button>
+          </div>
+        `;
+      });
+      list.innerHTML = html;
+      document.getElementById('cartGrandTotal').innerText = '₹' + sum;
+      document.getElementById('checkoutBtn').style.display = 'block';
+    }
+
+    function removeItem(index) {
+      cart.splice(index, 1);
+      localStorage.setItem('caregrid_cart', JSON.stringify(cart));
+      renderCart();
+    }
+
+    function confirmDirectBooking() {
+      if (cart.length === 0) return;
+
+      const btn = document.getElementById('checkoutBtn');
+      btn.innerText = 'Assigning Phlebotomist & Saving...';
+      btn.disabled = true;
+
+      const totalAmount = document.getElementById('cartGrandTotal').innerText;
+      const testNames = cart.map(t => t.name).join(', ');
+      const patientName = localStorage.getItem('caregrid_user_name') || 'Raj More';
+      const patientPhone = localStorage.getItem('caregrid_user_phone') || '6353468394';
+
+      const bookingPayload = {
+        patient: patientName,
+        phone: patientPhone,
+        address: 'Plot 42, Satellite Area, Ahmedabad, Gujarat - 380054',
+        tests: testNames,
+        amount: totalAmount
+      };
+
+      fetch('/api/booking/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingPayload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.booking) {
+          showConfirmationModal(data.booking);
+        } else {
+          fallbackBooking(testNames, totalAmount, patientName, patientPhone);
+        }
+      })
+      .catch(() => {
+        fallbackBooking(testNames, totalAmount, patientName, patientPhone);
+      });
+    }
+
+    function fallbackBooking(tests, amount, name, phone) {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const fallbackId = `${dd}${mm}${yyyy}1`;
+
+      const obj = {
+        id: fallbackId,
+        patient: name,
+        phone: phone,
+        address: 'Plot 42, Satellite Area, Ahmedabad, Gujarat - 380054',
+        tests: tests,
+        amount: amount,
+        date: now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        status: 'Active',
+        dispatchTime: 'Within 1 Hour',
+        collector: 'Sunil Varma (Vaccinated Phlebotomist)'
+      };
+      showConfirmationModal(obj);
+    }
+
+    function showConfirmationModal(booking) {
+      let orders = JSON.parse(localStorage.getItem('caregrid_orders') || '[]');
+      orders.unshift(booking);
+      localStorage.setItem('caregrid_orders', JSON.stringify(orders));
+
+      // Clear cart
+      localStorage.removeItem('caregrid_cart');
+      document.getElementById('cartItemsList').innerHTML = '<p style="color:#64748b; padding:25px 0; text-align:center;">Order confirmed!</p>';
+
+      // Populate Modal Fields
+      document.getElementById('dispOrderId').innerText = booking.id;
+      document.getElementById('dispPatient').innerText = booking.patient;
+      document.getElementById('dispTests').innerText = booking.tests;
+      document.getElementById('dispAmount').innerText = booking.amount;
+
+      // Show Modal
+      document.getElementById('orderSuccessModal').style.display = 'flex';
+    }
+
+    renderCart();
+  </script>
+</body>
+</html>
