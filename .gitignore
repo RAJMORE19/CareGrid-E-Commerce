@@ -6,3 +6,10 @@
 .bashrc
 .bash_logout
 -la
+.bash_history
+.bash_logout
+.bashrc
+.lesshst
+.profile
+.docker
+-la
