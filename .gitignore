@@ -1,0 +1,8 @@
+.cache/
+.ssh/
+.bash_history
+.lesshst
+.profile
+.bashrc
+.bash_logout
+-la
