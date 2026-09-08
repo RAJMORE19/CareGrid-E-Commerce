@@ -1,3 +1,4 @@
+```markdown
 # CareGrid E-Commerce: Cloud Infrastructure Provisioning (Terraform)
 
 This module implements an automated, enterprise-grade Infrastructure-as-Code (IaC) configuration for the **CareGrid E-Commerce** platform on Amazon Web Services (AWS) using HashiCorp Terraform.
@@ -28,14 +29,125 @@ This module implements an automated, enterprise-grade Infrastructure-as-Code (Ia
 
 ## Prerequisites
 
+Ensure the following tools are installed and configured locally before deployment:
+
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) `>= 1.5.0`
-- [AWS CLI](https://aws.amazon.com/cli/) `>= 2.0` authenticated with administrative access
-- [kubectl](https://kubernetes.io/docs/tasks/tools/) configured locally
+- [AWS CLI](https://aws.amazon.com/cli/) `>= 2.0`
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) compatible with Kubernetes `1.30`
 
 ---
 
-## Deployment Lifecycle
+## Step-by-Step Deployment Guide
 
-### 1. Initialize Backend and Modules
+### 1. Configure AWS Credentials
+Ensure your terminal has administrative access to your AWS account:
+```bash
+aws configure
+
+```
+
+Verify identity and active account:
+
+```bash
+aws sts get-caller-identity
+
+```
+
+### 2. Prepare Environment Variables
+
+Navigate to the Terraform directory and create your variable configuration from the sample:
+
+```bash
+cd 01-infrastructure-terraform
+cp terraform.tfvars.example terraform.tfvars
+
+```
+
+*(Optional)* Edit `terraform.tfvars` if you need to override the target region, cluster name, or instance configurations.
+
+### 3. Initialize Terraform Working Directory
+
+Download necessary provider plugins and external modules:
+
 ```bash
 terraform init
+
+```
+
+### 4. Validate and Format Configuration
+
+Check syntax integrity and formatting across all `.tf` files:
+
+```bash
+terraform fmt -check
+terraform validate
+
+```
+
+### 5. Review Execution Plan
+
+Generate and inspect an execution plan to verify planned infrastructure changes:
+
+```bash
+terraform plan -out=tfplan
+
+```
+
+### 6. Provision Cloud Infrastructure
+
+Apply the generated execution plan to provision the VPC, EKS cluster, and IAM resources (typically takes 12–18 minutes):
+
+```bash
+terraform apply tfplan
+
+```
+
+---
+
+## Post-Deployment & Cluster Verification
+
+### 1. Update Local Kubeconfig
+
+Register the newly created EKS cluster with your local `kubectl` context:
+
+```bash
+aws eks --region ap-south-1 update-kubeconfig --name caregrid-eks
+
+```
+
+### 2. Verify Node Pool Status
+
+Confirm that all EC2 spot worker nodes are in the `Ready` status:
+
+```bash
+kubectl get nodes -o wide
+
+```
+
+### 3. Verify Core Cluster Services
+
+Verify that the core EKS add-ons (CoreDNS, kube-proxy, VPC CNI, and EBS CSI) are running properly:
+
+```bash
+kubectl get pods -n kube-system
+
+```
+
+---
+
+## Teardown Procedure
+
+To cleanly destroy all provisioned cloud resources and prevent ongoing billing:
+
+```bash
+# 1. Ensure any external Kubernetes Services/Ingresses (ALBs) are deleted first:
+# kubectl delete ingress --all --all-namespaces
+
+# 2. Destroy the underlying AWS infrastructure:
+terraform destroy -auto-approve
+
+```
+
+```
+
+```
