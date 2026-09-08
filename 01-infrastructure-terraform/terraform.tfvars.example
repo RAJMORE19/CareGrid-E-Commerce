@@ -1,0 +1,10 @@
+# Rename to terraform.tfvars for local execution
+aws_region              = "ap-south-1"
+environment             = "dev"
+cluster_name            = "caregrid-eks"
+cluster_version         = "1.30"
+vpc_cidr                = "10.0.0.0/16"
+spot_instance_types     = ["t3.medium", "t3a.medium"]
+node_group_min_size     = 2
+node_group_max_size     = 5
+node_group_desired_size = 2
