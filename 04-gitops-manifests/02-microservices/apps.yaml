@@ -1,0 +1,257 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: caregrid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/auth-service:latest
+          ports:
+            - containerPort: 5001
+          env:
+            - name: PORT
+              value: "5001"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: caregrid
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 5001
+      targetPort: 5001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart-service
+  namespace: caregrid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cart-service
+  template:
+    metadata:
+      labels:
+        app: cart-service
+    spec:
+      containers:
+        - name: cart-service
+          image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/cart-service:latest
+          ports:
+            - containerPort: 5002
+          env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart-service
+  namespace: caregrid
+spec:
+  selector:
+    app: cart-service
+  ports:
+    - port: 5002
+      targetPort: 5002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+  namespace: caregrid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      containers:
+        - name: catalog-service
+          image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/catalog-service:latest
+          ports:
+            - containerPort: 5003
+          env:
+            - name: PORT
+              value: "5003"
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: "caregrid"
+            - name: DB_PASSWORD
+              value: "secretpassword"
+            - name: DB_NAME
+              value: "caregrid_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+  namespace: caregrid
+spec:
+  selector:
+    app: catalog-service
+  ports:
+    - port: 5003
+      targetPort: 5003
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+  namespace: caregrid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booking-service
+  template:
+    metadata:
+      labels:
+        app: booking-service
+    spec:
+      containers:
+        - name: booking-service
+          image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/booking-service:latest
+          ports:
+            - containerPort: 5004
+          env:
+            - name: DYNAMODB_ENDPOINT
+              value: "http://dynamodb-local:8000"
+            - name: AWS_DEFAULT_REGION
+              value: "ap-south-1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-service
+  namespace: caregrid
+spec:
+  selector:
+    app: booking-service
+  ports:
+    - port: 5004
+      targetPort: 5004
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: caregrid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/payment-service:latest
+          ports:
+            - containerPort: 5005
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: caregrid
+spec:
+  selector:
+    app: payment-service
+  ports:
+    - port: 5005
+      targetPort: 5005
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: caregrid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/notification-service:latest
+          ports:
+            - containerPort: 5006
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: caregrid
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 5006
+      targetPort: 5006
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: caregrid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/frontend:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: caregrid
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
