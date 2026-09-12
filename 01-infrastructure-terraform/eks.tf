@@ -38,6 +38,8 @@ module "eks" {
     # Cost-efficient Spot Worker Fleet for Stateless Microservices
     spot_fleet = {
       name         = "${var.cluster_name}-spot-ng"
+      ami_type     = "AL2023_x86_64_STANDARD"
+
       min_size     = var.node_group_min_size
       max_size     = var.node_group_max_size
       desired_size = var.node_group_desired_size
