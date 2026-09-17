@@ -71,47 +71,40 @@ echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
   /etc/apt/sources.list.d/jenkins.list > /dev/null
 sudo apt update
 sudo apt install jenkins
+Now, access Jenkins Master on the browser on port 8080 and configure it.
 
 ```
 
 
-* **SonarQube (as Container):** This is for implementing static code analysis, maintaining code quality, and enforcing secure coding standards in your application code.
-[https://docs.sonarsource.com/sonarqube/latest/setup-and-upgrade/deploy-on-docker/](https://www.google.com/search?q=https://docs.sonarsource.com/sonarqube/latest/setup-and-upgrade/deploy-on-docker/)
-```bash
+* **SonarQube (as Container):**
 sudo sysctl -w vm.max_map_count=262144
-echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
-docker run -d --name sonarqube -p 9000:9000 -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true --restart always sonarqube:lts-community
-docker ps | grep sonarqube
+docker run -d --name sonarqube-server -p 9000:9000 sonarqube:lts-community
 
 ```
 
 
-* **Trivy:** This is a standard prerequisite tool for dynamically scanning container images and repositories to detect CVE (Common Vulnerabilities and Exposures).
-[https://aquasecurity.github.io/trivy/latest/getting-started/installation/#debianubuntu](https://www.google.com/search?q=https://aquasecurity.github.io/trivy/latest/getting-started/installation/%23debianubuntu)
-```bash
-sudo apt install -y wget apt-transport-https gnupg
-wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-sudo apt update && sudo apt install -y trivy
-trivy --version
+* **Trivy:**
+sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+sudo apt-get update -y
+sudo apt-get install trivy -y
 
 ```
 
 
-* **kubectl:** The primary Kubernetes command-line tool required to communicate with and control the AWS EKS cluster.
-[https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
-```bash
+* **kubectl:**
+sudo mkdir -p -m 755 /etc/apt/keyrings
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt update && sudo apt install -y kubectl
-kubectl version --client
+sudo apt update
+sudo apt install -y kubectl
+
 
 ```
 
 
 * **Helm:** The package manager for Kubernetes to deploy charts, ingress controllers, monitoring stacks, and ArgoCD resources.
-[https://helm.sh/docs/intro/install/](https://helm.sh/docs/intro/install/)
-```bash
 curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 helm version
 
