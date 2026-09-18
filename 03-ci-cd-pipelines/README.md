@@ -1,4 +1,4 @@
-<img width="1672" height="941" alt="CICD" src="https://github.com/user-attachments/assets/35627d45-551e-47ba-9418-0b5b84f12f65" />
+<img width="1672" height="940" alt="CICD" src="https://github.com/user-attachments/assets/cb11e67f-dc65-494e-aefa-0d80e2d628dd" />
 
 
 # CI/CD IMPLEMENTATION
