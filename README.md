@@ -1,158 +1,443 @@
 <img width="1535" height="1024" alt="CareGrid-E-Commerce" src="https://github.com/user-attachments/assets/9a6487fe-3a38-449f-a2a6-47e0f3db7b78" />
 
-Aapke GitHub repository ke **README.md** ke liye ekdum crisp, structured aur copy-paste ready documentation neeche diya gaya hai:
+# CAREGRID-E-COMMERCE
+
+## Production-Grade • Cloud-Native • Secure • Scalable
+
+# 10-SECOND PROJECT OVERVIEW
+
+**GitHub → Jenkins → SonarQube + Trivy → Docker Build → ECR → GitOps Repository → ArgoCD → EKS → CareGrid Microservices**
+
+**Terraform** provisions the AWS infrastructure.
+
+**Jenkins** performs CI, code-quality checks, security scans, Docker image builds, and pushes images to **Amazon ECR**.
+
+**ArgoCD** monitors the **GitOps repository** and deploys the required application version to **Amazon EKS**.
+
+**EKS** runs the CareGrid microservices.
+
+**User Traffic:** **Route 53 → CloudFront/WAF → ALB → EKS Private Worker Nodes → Microservices**
+
+The detailed implementation of each component will be covered separately in dedicated folders such as **Terraform**, **Jenkins**, **Kubernetes**, **ArgoCD**, and other project folders.
 
 ---
 
-```markdown
-# 🛒 CareGrid E-Commerce: Production-Grade DevSecOps & GitOps Pipeline
+# STEP 1 — EC2 MASTER SERVER SETUP
 
-An enterprise-grade, cloud-native architecture deployed on **AWS EKS** using **Terraform, Jenkins, SonarQube, Trivy, ArgoCD, and Helm**[cite: 1].
+## EC2 Master Server Specifications
+
+### CI/CD & DevSecOps
+
+**Name:** CareGrid-E-Commerce
+
+**Instance Family:** General Purpose (Burstable)
+
+**Instance Type:** **t3.large (Minimum Required)**
+
+**Compute:** **2 vCPUs**
+
+**Memory:** **8 GiB RAM**
+
+**Note:** This specification is required to simultaneously run the **Jenkins Master server** and the **SonarQube container** without memory exhaustion.
+
+**Storage (EBS):** **50 GiB gp3**
+
+**Note:** This provides sufficient space for:
+
+* Operating system
+* Jenkins home directory
+* Local Docker image cache
+* SonarQube data
+
+**Networking:** **Public IPv4 enabled (Auto-assign)**
 
 ---
 
-## 🏛️ Architecture Overview (4 Core Layers)
+# STEP 1.1 — INSTALL REQUIRED TOOLS
 
-* **1. Infrastructure as Code (Terraform)**: Provisions Multi-AZ **Custom VPC** (Public & Private subnets), **AWS EKS Cluster**, **2x `t3.medium` Managed Node Groups**, data stores (**RDS PostgreSQL, ElastiCache Redis, S3**), and **IAM (IRSA)**[cite: 1].
-* **2. CI & DevSecOps (Jenkins Master)**: Automates **GitHub** triggers, **SonarQube** code quality gates, **Docker** builds, **Trivy** image scans, and artifact pushes to **AWS ECR**[cite: 1].
-* **3. GitOps Continuous Delivery (ArgoCD)**: Runs inside **EKS**, syncs declarative **Helm** manifests from Git, detects image changes, and handles **Blue/Green & Canary Rollouts** with zero drift[cite: 1].
-* **4. Secure Ingress Flow**: Traffic enters via **Route 53 -> CloudFront/WAF -> ALB -> EKS Private Microservices -> RDS/Redis**[cite: 1].
+To begin the project, install the following tools on the **Jenkins Master EC2 server**.
 
----
+## Installation Order
 
-## 💻 Master Node Hardware Specifications
-
-| Component | Specification | Engineering Purpose |
-| :--- | :--- | :--- |
-| **Instance Name** | `CareGrid-E-Commerce` | CI/CD & DevSecOps Master Node |
-| **Instance Type** | `t3.large` (2 vCPU, 8 GiB RAM) | Stable memory for Jenkins JVM + SonarQube Container |
-| **Storage (EBS)** | 50 GiB `gp3` | Docker layers, SonarQube indices, Jenkins workspace |
-| **Networking** | Public IPv4 Enabled | External Git webhooks & management access |
+1. **AWS CLI v2**
+2. **Terraform**
+3. **Docker & Docker Compose**
+4. **Java**
+5. **Jenkins**
+6. **SonarQube**
+7. **Trivy**
+8. **kubectl**
+9. **Helm**
 
 ---
 
-## 🛠️ Step-by-Step Server Setup Guide
+## 1. AWS CLI v2
 
-Run all steps sequentially on the **Ubuntu 22.04 / 24.04 LTS** Jenkins Master.
+**AWS CLI v2** is essential for:
 
-### 1. Base Utilities & AWS CLI v2
-* Reference: [AWS CLI Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+* Setting up the EKS cluster
+* Managing permissions
+* Creating artifacts within the CI/CD pipeline
+
+Documentation:
+
+https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 
 ```bash
-sudo apt update && sudo apt install -y unzip curl wget gnupg software-properties-common ca-certificates apt-transport-https
-curl -fsSL [https://awscli.amazonaws.com/v2/install.sh](https://awscli.amazonaws.com/v2/install.sh) | sudo bash -s -- --system
+sudo apt update && sudo apt install -y unzip
+curl -fsSL https://awscli.amazonaws.com/v2/install.sh | sudo bash -s -- --system
 aws --version
-
 ```
 
-### 2. HashiCorp Terraform
+---
 
-* Reference: [HashiCorp Install](https://developer.hashicorp.com/terraform/install?utm_source=gemini)
+## 2. Terraform
+
+**Terraform** is the primary Infrastructure as Code (IaC) tool used to provision and automate the entire cloud infrastructure, including:
+
+* EKS cluster
+* VPC
+* Worker nodes
+
+Documentation:
+
+https://developer.hashicorp.com/terraform/install
 
 ```bash
-wget -O - [https://apt.releases.hashicorp.com/gpg](https://apt.releases.hashicorp.com/gpg) | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] [https://apt.releases.hashicorp.com](https://apt.releases.hashicorp.com) $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install -y wget gpg
+wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 sudo apt update && sudo apt install -y terraform
 terraform -version
-
 ```
 
-### 3. Docker Engine & Docker Compose
+---
 
-* Reference: [Docker Install](https://docs.docker.com/engine/install/ubuntu/?utm_source=gemini)
+## 3. Docker & Docker Compose
+
+**Docker & Docker Compose** are used for:
+
+* Building container images for microservices
+* Locally testing the containerization setup
+
+Documentation:
+
+https://docs.docker.com/engine/install/ubuntu/
 
 ```bash
-curl -fsSL [https://get.docker.com](https://get.docker.com) | sudo sh
-sudo usermod -aG docker $USER
-sudo systemctl enable --now docker
+curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER
 newgrp docker
 docker --version && docker compose version
-
 ```
 
-### 4. OpenJDK 17 & Jenkins
+---
 
-* Reference: [Jenkins Install](https://www.google.com/search?q=https://www.jenkins.io/doc/book/installing/linux/%2523debianubuntu&utm_source=gemini)
+# STEP 1.2 — DEVSECOPS & KUBERNETES ORCHESTRATION
+
+## 4. Java — Jenkins Prerequisite
+
+Java is required as a prerequisite for **Jenkins**.
 
 ```bash
-# Install Java 17
-sudo apt update && sudo apt install -y openjdk-17-jre
-
-# Add Jenkins Repo & Install
-sudo wget -O /usr/share/keyrings/jenkins-keyring.asc [https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key](https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key)
-echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] [https://pkg.jenkins.io/debian-stable](https://pkg.jenkins.io/debian-stable) binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
-sudo apt update && sudo apt install -y jenkins
-
-# Enable Docker access for Jenkins build user
-sudo usermod -aG docker jenkins
-sudo systemctl enable --now jenkins
-
+sudo apt update
+sudo apt install fontconfig openjdk-21-jre
+java -version
 ```
 
-### 5. SonarQube (Docker Container)
+---
 
-* Reference: [SonarQube Docker Hub](https://www.google.com/search?q=https://docs.sonarsource.com/sonarqube/latest/setup-and-upgrade/deploy-on-docker/&utm_source=gemini)
+## 5. Jenkins
+
+**Jenkins** is the core CI/CD orchestration engine used to run:
+
+* Build
+* Security scans
+* GitOps sync trigger
+
+Documentation:
+
+https://www.jenkins.io/doc/book/installing/linux/
+
+### Install Jenkins
 
 ```bash
-# Allocate virtual memory for Elasticsearch
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+sudo apt update
+sudo apt install jenkins
+```
+
+Now, access **Jenkins Master on the browser on port 8080** and configure it.
+
+---
+
+## 6. SonarQube
+
+**SonarQube** runs as a container and is used for code quality scanning.
+
+```bash
 sudo sysctl -w vm.max_map_count=262144
-echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
 
-# Deploy SonarQube LTS
-docker run -d --name sonarqube-server -p 9000:9000 -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true --restart always sonarqube:lts-community
-docker ps | grep sonarqube
-
+docker run -d --name sonarqube-server -p 9000:9000 sonarqube:lts-community
 ```
 
-### 6. Trivy Security Scanner
+---
 
-* Reference: [Aqua Trivy Guide](https://www.google.com/search?q=https://aquasecurity.github.io/trivy/latest/getting-started/installation/%2523debianubuntu&utm_source=gemini)
+## 7. Trivy
+
+**Trivy** is used for security scanning of:
+
+* Images
+* Dependencies
 
 ```bash
-wget -qO - [https://aquasecurity.github.io/trivy-repo/deb/public.key](https://aquasecurity.github.io/trivy-repo/deb/public.key) | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] [https://aquasecurity.github.io/trivy-repo/deb](https://aquasecurity.github.io/trivy-repo/deb) $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-sudo apt update && sudo apt install -y trivy
-trivy --version
+sudo apt-get install wget apt-transport-https gnupg lsb-release -y
 
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+
+echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+
+sudo apt-get update -y
+
+sudo apt-get install trivy -y
 ```
 
-### 7. Kubernetes CLI (`kubectl`)
+---
 
-* Reference: [Kubernetes Docs](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/?utm_source=gemini)
+## 8. kubectl
+
+**kubectl** is used to interact with Kubernetes.
 
 ```bash
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL [https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key](https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key) | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] [https://pkgs.k8s.io/core:/stable:/v1.30/deb/](https://pkgs.k8s.io/core:/stable:/v1.30/deb/) /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt update && sudo apt install -y kubectl
-kubectl version --client
+sudo mkdir -p -m 755 /etc/apt/keyrings
 
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt update
+
+sudo apt install -y kubectl
 ```
 
-### 8. Helm v3
+---
 
-* Reference: [Helm Docs](https://helm.sh/docs/intro/install/?utm_source=gemini)
+## 9. Helm
+
+**Helm** is the package manager for Kubernetes and is used to deploy:
+
+* Charts
+* Ingress controllers
+* Monitoring stacks
+* ArgoCD resources
 
 ```bash
-curl -fsSL [https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3](https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3) | bash
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
 helm version
-
 ```
 
 ---
 
-## 🚀 Execution Roadmap
+# STEP 2 — TERRAFORM INFRASTRUCTURE PROVISIONING
 
-1. **Configure AWS Identity**: Run `aws configure` on the master server with proper IAM provisioning access.
-2. **Terraform Modules**: Write modular code for `vpc`, `security-groups`, and `eks-cluster`.
-3. **Provision Infrastructure**: Run `terraform init`, `terraform plan`, and `terraform apply -auto-approve`.
-4. **Connect EKS**: Authenticate local CLI using `aws eks update-kubeconfig --region <REGION> --name <CLUSTER_NAME>`.
-5. **GitOps Ingestion**: Deploy **ArgoCD** into the cluster and register deployment repositories.
+Terraform creates **Box 3 — AWS Cloud Fabric**.
 
-```
+## Custom VPC
+
+* **Public Subnets** — Load Balancer
+* **Private Subnets** — EKS Nodes and Databases
+
+## EKS Cluster
+
+* **AWS-managed Control Plane**
+* **HA mode**
+* **Managed Node Groups**
+* **2 × t3.medium worker nodes**
+* **Multi-AZ private subnets**
+
+## Data Fabric
+
+* **RDS PostgreSQL**
+* **ElastiCache Redis**
+* **S3**
+
+## Networking & Security
+
+* **IAM Roles**
+* **Security Groups**
+* **EKS OIDC Provider**
+
+The detailed Terraform implementation will be maintained separately in the **Terraform folder**.
 
 ---
 
-Ise aap directly copy karke apne GitHub repo ke `README.md` me paste kar sakte hain. Jab aap ready hon, hum Terraform code directory structure aur `vpc.tf` likhna start karenge.
+# STEP 3 — AMAZON ECR
 
+**Amazon ECR** is the container image registry.
+
+Jenkins builds the microservice Docker images and pushes them to **ECR**.
+
+**Jenkins → Docker Build → Security Scan → ECR**
+
+---
+
+# STEP 4 — JENKINS CI PIPELINE
+
+Jenkins handles **CI — Build & Security Scan**.
+
+Pipeline flow:
+
+**GitHub → Code Checkout → SonarQube → Docker Build → Trivy Scan → ECR**
+
+Jenkins then updates the **GitOps repository** with the new:
+
+* **Helm values**
+* **Image tag**
+
+---
+
+# STEP 5 — GITOPS REPOSITORY
+
+The **GitOps repository** contains the desired Kubernetes deployment configuration.
+
+It contains the required:
+
+* **Helm**
+* **Manifests**
+* **Image tags**
+
+Jenkins updates the required image tag after a successful CI pipeline.
+
+---
+
+# STEP 6 — ARGOCD
+
+**ArgoCD** is installed inside the **EKS cluster**.
+
+ArgoCD monitors the **GitOps repository**.
+
+Jenkins does **not** directly run `kubectl apply` for application deployment.
+
+Deployment flow:
+
+**Jenkins → GitOps Repository → ArgoCD → EKS**
+
+When Jenkins updates the image tag, **ArgoCD detects the change and rolls out the new application version** on the EKS worker nodes.
+
+The detailed ArgoCD implementation will be maintained separately in the **ArgoCD folder**.
+
+---
+
+# STEP 7 — EKS MICROSERVICES DEPLOYMENT
+
+The EKS worker nodes run the CareGrid microservices:
+
+* **Auth**
+* **Catalog**
+* **Cart**
+* **Booking**
+* **Payment**
+* **Notification**
+
+The microservices consume the required AWS data services such as:
+
+* **RDS PostgreSQL**
+* **ElastiCache Redis**
+* **S3**
+
+---
+
+# STEP 8 — APPLICATION TRAFFIC FLOW
+
+User requests follow this flow:
+
+**User → Route 53 → CloudFront / WAF → Application Load Balancer (ALB) → EKS Private Worker Nodes → CareGrid Microservices**
+
+---
+
+# COMPLETE PROJECT FLOW
+
+```text
+                         GITHUB
+                           |
+                           v
+                       JENKINS
+                           |
+              +------------+------------+
+              |                         |
+              v                         v
+          SONARQUBE                   TRIVY
+        Code Quality              Security Scan
+              |                         |
+              +------------+------------+
+                           |
+                           v
+                    DOCKER BUILD
+                           |
+                           v
+                         ECR
+                           |
+                           v
+                  GITOPS REPOSITORY
+                           |
+                           v
+                        ARGOCD
+                           |
+                           v
+                         EKS
+                           |
+        +----------+-------+-------+----------+
+        |          |       |       |          |
+       AUTH     CATALOG   CART   BOOKING   PAYMENT
+                                             |
+                                      NOTIFICATION
+                           |
+                           v
+                  RDS / REDIS / S3
 ```
+
+## Infrastructure Flow
+
+```text
+                      TERRAFORM
+                          |
+                          v
+                         AWS
+                          |
+          +---------------+---------------+
+          |               |               |
+         VPC             EKS             DATA
+          |               |               |
+     Subnets        Node Groups      RDS / Redis / S3
+          |
+   IAM / Security Groups
+   / OIDC Provider
+```
+
+## User Traffic Flow
+
+```text
+USER
+  |
+  v
+ROUTE 53
+  |
+  v
+CLOUDFRONT / WAF
+  |
+  v
+ALB
+  |
+  v
+EKS PRIVATE WORKER NODES
+  |
+  v
+CAREGRID MICROSERVICES
+```
+
