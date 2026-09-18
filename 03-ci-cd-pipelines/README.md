@@ -1,3 +1,6 @@
+<img width="1672" height="941" alt="CICD" src="https://github.com/user-attachments/assets/35627d45-551e-47ba-9418-0b5b84f12f65" />
+
+
 # CI/CD IMPLEMENTATION
 
 ## 1. CI (Continuous Integration) Pipeline Setup
