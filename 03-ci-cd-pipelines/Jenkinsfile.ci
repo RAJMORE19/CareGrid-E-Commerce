@@ -1,0 +1,84 @@
+pipeline {
+    agent any
+
+    environment {
+        // Exact matching ECR repository name
+        ECR_REPO_NAME    = 'caregrid/booking-service'
+        
+        GIT_REPO_URL     = 'https://github.com/RAJMORE19/CareGrid-E-Commerce.git'
+        GIT_BRANCH       = 'main'
+        AWS_REGION       = 'ap-south-1'
+        AWS_ACCOUNT_ID   = '466124992944'
+        ECS_CLUSTER_NAME = 'caregrid-cluster'
+        ECS_SERVICE_NAME = 'booking-service'
+        SERVICE_DIR      = '02-microservices/booking-service'
+        
+        IMAGE_TAG        = "${env.BUILD_NUMBER}"
+        ECR_REGISTRY     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                cleanWs()
+                git branch: "${env.GIT_BRANCH}", url: "${env.GIT_REPO_URL}"
+            }
+        }
+
+        stage('ECR Login') {
+            steps {
+                sh """
+                    aws ecr get-login-password --region ${env.AWS_REGION} | \
+                      docker login --username AWS --password-stdin ${env.ECR_REGISTRY}
+                """
+            }
+        }
+
+        stage('Docker Build & Tag') {
+            steps {
+                dir("${env.SERVICE_DIR}") {
+                    sh """
+                        docker build -t ${env.ECR_REGISTRY}/${env.ECR_REPO_NAME}:${env.IMAGE_TAG} .
+                        docker tag ${env.ECR_REGISTRY}/${env.ECR_REPO_NAME}:${env.IMAGE_TAG} ${env.ECR_REGISTRY}/${env.ECR_REPO_NAME}:latest
+                    """
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                sh """
+                    docker push ${env.ECR_REGISTRY}/${env.ECR_REPO_NAME}:${env.IMAGE_TAG}
+                    docker push ${env.ECR_REGISTRY}/${env.ECR_REPO_NAME}:latest
+                """
+            }
+        }
+
+        stage('Deploy to ECS') {
+            steps {
+                sh """
+                    aws ecs update-service \
+                        --cluster ${env.ECS_CLUSTER_NAME} \
+                        --service ${env.ECS_SERVICE_NAME} \
+                        --force-new-deployment \
+                        --region ${env.AWS_REGION}
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            sh """
+                docker rmi ${env.ECR_REGISTRY}/${env.ECR_REPO_NAME}:${env.IMAGE_TAG} || true
+                docker rmi ${env.ECR_REGISTRY}/${env.ECR_REPO_NAME}:latest || true
+            """
+        }
+        success {
+            echo "Build, Push aur ECS Deployment successfully complete ho gaya!"
+        }
+        failure {
+            echo "Pipeline fail ho gayi! Console output check karein."
+        }
+    }
+}
