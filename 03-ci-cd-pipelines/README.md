@@ -4,18 +4,18 @@
 
 ### Trigger & Build (Tier A)
 
-* **Developer ke GitHub repo me push karte hi Jenkins ya GitHub Actions pipeline trigger hoga aur Docker build run karega.**
+* **As soon as the developer pushes code to the GitHub repository, the Jenkins or GitHub Actions pipeline will be triggered and the Docker build will run.**
 
 ### Security & Quality Scan (Tier B)
 
-* Code quality ke liye **SonarQube**
-* Vulnerabilities ke liye **Trivy**
-* Dependency scanning ke liye **OWASP Dependency Check**
+* **SonarQube** for code quality
+* **Trivy** for vulnerability scanning
+* **OWASP Dependency Check** for dependency scanning
 
 ### Artifact Push (Tier C)
 
-* Scans pass hote hi **SBOM generate** hoga.
-* Docker image **version tag** ke sath **AWS ECR** me push hogi.
+* After all scans pass, an **SBOM will be generated**.
+* The Docker image will be pushed to **AWS ECR** with a **version tag**.
 
 ---
 
@@ -23,14 +23,14 @@
 
 ### GitOps Repo
 
-* **Kubernetes manifests ya Helm charts ko ek alag Git repository me maintain karna hoga.**
+* **Kubernetes manifests or Helm charts will be maintained in a separate Git repository.**
 
 ### Argo CD Deployment
 
-* EKS cluster ke andar **Argo CD** aur **Argo CD Image Updater** deploy karna hoga.
+* **Argo CD** and **Argo CD Image Updater** will be deployed inside the **EKS cluster**.
 
 ### Automated Sync & Rollout
 
-* Jaise hi **ECR me nayi image aayegi**, **Argo CD Image Updater** manifests ko update karega.
-* **Argo CD** changes ko pull karega.
-* **Argo Rollouts (Blue/Green)** ke through **zero-downtime microservices deployment** hoga.
+* As soon as a **new image is available in ECR**, **Argo CD Image Updater** will update the manifests.
+* **Argo CD** will pull the changes.
+* **Argo Rollouts (Blue/Green)** will deploy the microservices with **zero downtime**.
