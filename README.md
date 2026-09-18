@@ -170,6 +170,7 @@ echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
 
 sudo apt update
 sudo apt install jenkins
+sudo usermod -aG docker jenkins
 ```
 
 Now, access **Jenkins Master on the browser on port 8080** and configure it.
