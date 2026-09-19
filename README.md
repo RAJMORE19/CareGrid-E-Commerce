@@ -1,3 +1,6 @@
+<img width="1536" height="1024" alt="CareGrid-E-Commerce" src="https://github.com/user-attachments/assets/09c9577c-ccaa-4e81-b583-e64400f434bc" />
+
+
 # 🏥 CareGrid E-Commerce
 
 ### Production-Style • AWS • Kubernetes • DevSecOps • GitOps
