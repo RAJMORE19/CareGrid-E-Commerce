@@ -1,10 +1,35 @@
-# Rename to terraform.tfvars for local execution
-aws_region              = "ap-south-1"
-environment             = "dev"
-cluster_name            = "caregrid-eks"
-cluster_version         = "1.30"
-vpc_cidr                = "10.0.0.0/16"
-spot_instance_types     = ["t3.medium", "t3a.medium"]
+aws_region      = "ap-south-1"
+project_name    = "caregrid"
+environment     = "dev"
+cluster_name    = "caregrid-eks"
+
+# Set this to an EKS version currently supported in ap-south-1
+# before terraform plan/apply.
+cluster_version = "<SUPPORTED_EKS_VERSION>"
+
+vpc_cidr = "10.0.0.0/16"
+
+public_subnet_cidrs = [
+  "10.0.1.0/24",
+  "10.0.2.0/24"
+]
+
+private_subnet_cidrs = [
+  "10.0.11.0/24",
+  "10.0.12.0/24"
+]
+
+spot_instance_types = [
+  "t3.medium",
+  "t3a.medium"
+]
+
 node_group_min_size     = 2
-node_group_max_size     = 5
 node_group_desired_size = 2
+node_group_max_size     = 4
+
+db_name           = "caregrid"
+db_username       = "caregridadmin"
+db_instance_class = "db.t3.micro"
+
+redis_node_type = "cache.t3.micro"
