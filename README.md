@@ -1,444 +1,618 @@
-<img width="1535" height="1024" alt="CareGrid-E-Commerce" src="https://github.com/user-attachments/assets/9a6487fe-3a38-449f-a2a6-47e0f3db7b78" />
+# 🏥 CareGrid E-Commerce
 
-# CAREGRID-E-COMMERCE
+## Production-Style AWS EKS Microservices & DevSecOps Platform
 
-## Production-Grade • Cloud-Native • Secure • Scalable
+CareGrid is a cloud-native **Blood Test Booking & Diagnostic E-Commerce platform** built to demonstrate a practical production-style DevOps architecture using **AWS, Terraform, Kubernetes, Jenkins, GitOps, Argo CD, security scanning, and observability**.
 
-# 10-SECOND PROJECT OVERVIEW
-
-**GitHub → Jenkins → SonarQube + Trivy → Docker Build → ECR → GitOps Repository → ArgoCD → EKS → CareGrid Microservices**
-
-**Terraform** provisions the AWS infrastructure.
-
-**Jenkins** performs CI, code-quality checks, security scans, Docker image builds, and pushes images to **Amazon ECR**.
-
-**ArgoCD** monitors the **GitOps repository** and deploys the required application version to **Amazon EKS**.
-
-**EKS** runs the CareGrid microservices.
-
-**User Traffic:** **Route 53 → CloudFront/WAF → ALB → EKS Private Worker Nodes → Microservices**
-
-The detailed implementation of each component will be covered separately in dedicated folders such as **Terraform**, **Jenkins**, **Kubernetes**, **ArgoCD**, and other project folders.
+The project focuses on implementing production engineering practices while keeping the deployed environment **cost-optimized for learning and demonstration**.
 
 ---
 
-# STEP 1 — EC2 MASTER SERVER SETUP
-
-## EC2 Master Server Specifications
-
-### CI/CD & DevSecOps
-
-**Name:** CareGrid-E-Commerce
-
-**Instance Family:** General Purpose (Burstable)
-
-**Instance Type:** **t3.large (Minimum Required)**
-
-**Compute:** **2 vCPUs**
-
-**Memory:** **8 GiB RAM**
-
-**Note:** This specification is required to simultaneously run the **Jenkins Master server** and the **SonarQube container** without memory exhaustion.
-
-**Storage (EBS):** **50 GiB gp3**
-
-**Note:** This provides sufficient space for:
-
-* Operating system
-* Jenkins home directory
-* Local Docker image cache
-* SonarQube data
-
-**Networking:** **Public IPv4 enabled (Auto-assign)**
-
----
-
-# STEP 1.1 — INSTALL REQUIRED TOOLS
-
-To begin the project, install the following tools on the **Jenkins Master EC2 server**.
-
-## Installation Order
-
-1. **AWS CLI v2**
-2. **Terraform**
-3. **Docker & Docker Compose**
-4. **Java**
-5. **Jenkins**
-6. **SonarQube**
-7. **Trivy**
-8. **kubectl**
-9. **Helm**
-
----
-
-## 1. AWS CLI v2
-
-**AWS CLI v2** is essential for:
-
-* Setting up the EKS cluster
-* Managing permissions
-* Creating artifacts within the CI/CD pipeline
-
-Documentation:
-
-https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
-
-```bash
-sudo apt update && sudo apt install -y unzip
-curl -fsSL https://awscli.amazonaws.com/v2/install.sh | sudo bash -s -- --system
-aws --version
-```
-
----
-
-## 2. Terraform
-
-**Terraform** is the primary Infrastructure as Code (IaC) tool used to provision and automate the entire cloud infrastructure, including:
-
-* EKS cluster
-* VPC
-* Worker nodes
-
-Documentation:
-
-https://developer.hashicorp.com/terraform/install
-
-```bash
-sudo apt update && sudo apt install -y wget gpg
-wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt update && sudo apt install -y terraform
-terraform -version
-```
-
----
-
-## 3. Docker & Docker Compose
-
-**Docker & Docker Compose** are used for:
-
-* Building container images for microservices
-* Locally testing the containerization setup
-
-Documentation:
-
-https://docs.docker.com/engine/install/ubuntu/
-
-```bash
-curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER
-newgrp docker
-docker --version && docker compose version
-```
-
----
-
-# STEP 1.2 — DEVSECOPS & KUBERNETES ORCHESTRATION
-
-## 4. Java — Jenkins Prerequisite
-
-Java is required as a prerequisite for **Jenkins**.
-
-```bash
-sudo apt update
-sudo apt install fontconfig openjdk-21-jre
-java -version
-```
-
----
-
-## 5. Jenkins
-
-**Jenkins** is the core CI/CD orchestration engine used to run:
-
-* Build
-* Security scans
-* GitOps sync trigger
-
-Documentation:
-
-https://www.jenkins.io/doc/book/installing/linux/
-
-### Install Jenkins
-
-```bash
-sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
-  https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
-
-echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
-  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
-  /etc/apt/sources.list.d/jenkins.list > /dev/null
-
-sudo apt update
-sudo apt install jenkins
-sudo usermod -aG docker jenkins
-```
-
-Now, access **Jenkins Master on the browser on port 8080** and configure it.
-
----
-
-## 6. SonarQube
-
-**SonarQube** runs as a container and is used for code quality scanning.
-
-```bash
-sudo sysctl -w vm.max_map_count=262144
-
-docker run -d --name sonarqube-server -p 9000:9000 sonarqube:lts-community
-```
-
----
-
-## 7. Trivy
-
-**Trivy** is used for security scanning of:
-
-* Images
-* Dependencies
-
-```bash
-sudo apt-get install wget apt-transport-https gnupg lsb-release -y
-
-wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-
-echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-
-sudo apt-get update -y
-
-sudo apt-get install trivy -y
-```
-
----
-
-## 8. kubectl
-
-**kubectl** is used to interact with Kubernetes.
-
-```bash
-sudo mkdir -p -m 755 /etc/apt/keyrings
-
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-sudo apt update
-
-sudo apt install -y kubectl
-```
-
----
-
-## 9. Helm
-
-**Helm** is the package manager for Kubernetes and is used to deploy:
-
-* Charts
-* Ingress controllers
-* Monitoring stacks
-* ArgoCD resources
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-helm version
-```
-
----
-
-# STEP 2 — TERRAFORM INFRASTRUCTURE PROVISIONING
-
-Terraform creates **Box 3 — AWS Cloud Fabric**.
-
-## Custom VPC
-
-* **Public Subnets** — Load Balancer
-* **Private Subnets** — EKS Nodes and Databases
-
-## EKS Cluster
-
-* **AWS-managed Control Plane**
-* **HA mode**
-* **Managed Node Groups**
-* **2 × t3.medium worker nodes**
-* **Multi-AZ private subnets**
-
-## Data Fabric
-
-* **RDS PostgreSQL**
-* **ElastiCache Redis**
-* **S3**
-
-## Networking & Security
-
-* **IAM Roles**
-* **Security Groups**
-* **EKS OIDC Provider**
-
-The detailed Terraform implementation will be maintained separately in the **Terraform folder**.
-
----
-
-# STEP 3 — AMAZON ECR
-
-**Amazon ECR** is the container image registry.
-
-Jenkins builds the microservice Docker images and pushes them to **ECR**.
-
-**Jenkins → Docker Build → Security Scan → ECR**
-
----
-
-# STEP 4 — JENKINS CI PIPELINE
-
-Jenkins handles **CI — Build & Security Scan**.
-
-Pipeline flow:
-
-**GitHub → Code Checkout → SonarQube → Docker Build → Trivy Scan → ECR**
-
-Jenkins then updates the **GitOps repository** with the new:
-
-* **Helm values**
-* **Image tag**
-
----
-
-# STEP 5 — GITOPS REPOSITORY
-
-The **GitOps repository** contains the desired Kubernetes deployment configuration.
-
-It contains the required:
-
-* **Helm**
-* **Manifests**
-* **Image tags**
-
-Jenkins updates the required image tag after a successful CI pipeline.
-
----
-
-# STEP 6 — ARGOCD
-
-**ArgoCD** is installed inside the **EKS cluster**.
-
-ArgoCD monitors the **GitOps repository**.
-
-Jenkins does **not** directly run `kubectl apply` for application deployment.
-
-Deployment flow:
-
-**Jenkins → GitOps Repository → ArgoCD → EKS**
-
-When Jenkins updates the image tag, **ArgoCD detects the change and rolls out the new application version** on the EKS worker nodes.
-
-The detailed ArgoCD implementation will be maintained separately in the **ArgoCD folder**.
-
----
-
-# STEP 7 — EKS MICROSERVICES DEPLOYMENT
-
-The EKS worker nodes run the CareGrid microservices:
-
-* **Auth**
-* **Catalog**
-* **Cart**
-* **Booking**
-* **Payment**
-* **Notification**
-
-The microservices consume the required AWS data services such as:
-
-* **RDS PostgreSQL**
-* **ElastiCache Redis**
-* **S3**
-
----
-
-# STEP 8 — APPLICATION TRAFFIC FLOW
-
-User requests follow this flow:
-
-**User → Route 53 → CloudFront / WAF → Application Load Balancer (ALB) → EKS Private Worker Nodes → CareGrid Microservices**
-
----
-
-# COMPLETE PROJECT FLOW
+# 🚀 10-Second Architecture
 
 ```text
-                         GITHUB
-                           |
-                           v
-                       JENKINS
-                           |
-              +------------+------------+
-              |                         |
-              v                         v
-          SONARQUBE                   TRIVY
-        Code Quality              Security Scan
-              |                         |
-              +------------+------------+
-                           |
-                           v
-                    DOCKER BUILD
-                           |
-                           v
-                         ECR
-                           |
-                           v
-                  GITOPS REPOSITORY
-                           |
-                           v
-                        ARGOCD
-                           |
-                           v
-                         EKS
-                           |
-        +----------+-------+-------+----------+
-        |          |       |       |          |
-       AUTH     CATALOG   CART   BOOKING   PAYMENT
-                                             |
-                                      NOTIFICATION
-                           |
-                           v
-                  RDS / REDIS / S3
+Developer
+   │
+   ▼
+GitHub
+   │
+   ▼
+Jenkins CI
+   │
+   ├── Unit Tests
+   ├── SonarQube
+   ├── OWASP Dependency Check
+   ├── Docker Build
+   ├── Trivy Scan
+   └── SBOM
+   │
+   ▼
+Amazon ECR
+   │
+   ▼
+GitOps Repository
+   │
+   ▼
+Argo CD
+   │
+   ▼
+Argo Rollouts
+   │
+   ▼
+Amazon EKS
+   │
+   ▼
+CareGrid Microservices
+   │
+   ├── PostgreSQL / Amazon RDS
+   └── Redis
+
+Prometheus → Grafana → Alertmanager
 ```
 
-## Infrastructure Flow
+---
+
+# 🏗️ Platform Architecture
+
+## User Traffic
 
 ```text
-                      TERRAFORM
-                          |
-                          v
-                         AWS
-                          |
-          +---------------+---------------+
-          |               |               |
-         VPC             EKS             DATA
-          |               |               |
-     Subnets        Node Groups      RDS / Redis / S3
-          |
-   IAM / Security Groups
-   / OIDC Provider
+User
+ │
+ ▼
+Route 53
+ │
+ ▼
+Application Load Balancer
+ │
+ ▼
+AWS Load Balancer Controller
+ │
+ ▼
+Amazon EKS
+ │
+ ├── Auth Service
+ ├── Test Catalog Service
+ ├── Cart Service
+ ├── Booking Service
+ ├── Payment Service
+ └── Notification Service
 ```
 
-## User Traffic Flow
+EKS worker nodes and databases are placed inside **private subnets**.
+
+Public subnets are used for internet-facing infrastructure such as the Application Load Balancer.
+
+---
+
+# ⚙️ Infrastructure as Code
+
+AWS infrastructure is provisioned using **Terraform**.
+
+The infrastructure layer covers:
+
+- Custom VPC
+- Multi-AZ public/private subnets
+- NAT Gateway
+- Amazon EKS
+- Managed Node Groups
+- Amazon ECR
+- Amazon RDS PostgreSQL
+- Redis
+- IAM
+- IRSA / OIDC
+- Security Groups
+- AWS Secrets Manager
+- Encrypted storage
+
+Terraform code is maintained under:
 
 ```text
-USER
-  |
-  v
-ROUTE 53
-  |
-  v
-CLOUDFRONT / WAF
-  |
-  v
-ALB
-  |
-  v
-EKS PRIVATE WORKER NODES
-  |
-  v
-CAREGRID MICROSERVICES
+01-infrastructure-terraform/
 ```
 
+The currently deployed environment is intentionally cost-optimized.
+
+Production scaling patterns such as stronger multi-AZ redundancy, larger node capacity, and dedicated production environments can be applied without changing the core platform design.
+
+---
+
+# 🐳 Microservices
+
+CareGrid follows a microservices architecture.
+
+```text
+02-microservices/
+```
+
+Application services:
+
+| Service | Responsibility |
+|---|---|
+| Auth Service | Authentication and authorization |
+| Test Catalog | Diagnostic test management |
+| Cart Service | Shopping cart operations |
+| Booking Service | Test booking/order processing |
+| Payment Service | Payment workflow |
+| Notification Service | User notifications |
+
+Services are packaged as **Docker containers** and deployed to Kubernetes.
+
+---
+
+# 🔄 CI — Continuous Integration
+
+**Jenkins is the CI automation server.**
+
+```text
+Developer
+    ↓
+GitHub
+    ↓
+Jenkins
+    ↓
+Unit Tests
+    ↓
+SonarQube
+    ↓
+OWASP Dependency Check
+    ↓
+Docker Build
+    ↓
+Trivy
+    ↓
+SBOM
+    ↓
+Amazon ECR
+```
+
+## CI Security Gates
+
+### SonarQube
+
+Used for:
+
+- Static code analysis
+- Bugs
+- Code smells
+- Maintainability
+- Quality Gate validation
+
+### OWASP Dependency Check
+
+Used to identify known vulnerabilities in application dependencies.
+
+### Trivy
+
+Used to scan container images for:
+
+- OS vulnerabilities
+- Package vulnerabilities
+- HIGH/CRITICAL CVEs
+
+### SBOM
+
+A Software Bill of Materials is generated for container artifacts to improve dependency visibility and software supply-chain auditing.
+
+---
+
+# 📦 Container Registry
+
+Docker images are stored in **Amazon Elastic Container Registry (ECR)**.
+
+Images use immutable version/commit-based tags instead of relying on:
+
+```text
+latest
+```
+
+Example:
+
+```text
+auth-service:a84f73c
+booking-service:be29014
+payment-service:f812cd1
+```
+
+This provides traceability between:
+
+```text
+Git Commit → CI Build → Docker Image → Kubernetes Deployment
+```
+
+---
+
+# 🚀 CD — GitOps
+
+Application deployment follows the **GitOps model**.
+
+Jenkins does not directly deploy application workloads using:
+
+```bash
+kubectl apply
+```
+
+Instead:
+
+```text
+Jenkins
+   ↓
+Update GitOps image tag
+   ↓
+GitOps Repository
+   ↓
+Argo CD
+   ↓
+Amazon EKS
+```
+
+The Git repository therefore remains the source of truth for the desired Kubernetes application state.
+
+---
+
+# 🔵🟢 Progressive Delivery
+
+**Argo Rollouts** is used to demonstrate controlled application releases.
+
+Deployment strategy:
+
+```text
+New Version
+     ↓
+Blue / Green Rollout
+     ↓
+Health Validation
+     ↓
+┌───────────────┐
+│               │
+Healthy      Unhealthy
+│               │
+▼               ▼
+Promote       Rollback
+```
+
+This reduces deployment risk compared with immediately replacing all running application instances.
+
+---
+
+# ☸️ Kubernetes Production Practices
+
+Application workloads implement Kubernetes reliability practices including:
+
+### Health Checks
+
+```text
+Liveness Probe
+Readiness Probe
+```
+
+### Resource Management
+
+```text
+CPU Requests
+CPU Limits
+Memory Requests
+Memory Limits
+```
+
+### Autoscaling
+
+```text
+Horizontal Pod Autoscaler
+```
+
+HPA automatically adjusts application replica counts according to workload metrics.
+
+### Availability
+
+```text
+Pod Disruption Budget
+```
+
+PDB helps preserve application availability during voluntary disruptions such as node maintenance.
+
+---
+
+# 🔐 Security
+
+Security is implemented across multiple layers.
+
+## AWS
+
+```text
+IAM
+IRSA
+Security Groups
+Private Subnets
+Encrypted Storage
+Secrets Manager
+```
+
+## CI
+
+```text
+SonarQube
+OWASP Dependency Check
+Trivy
+SBOM
+```
+
+## Kubernetes
+
+```text
+RBAC
+Security Context
+Resource Limits
+Secrets Integration
+Network Policies
+```
+
+Application secrets and credentials must **not be stored directly in Git**.
+
+---
+
+# 📊 Observability
+
+The platform uses:
+
+```text
+Prometheus
+     ↓
+Grafana
+     ↓
+Alertmanager
+```
+
+### Prometheus
+
+Collects Kubernetes and application metrics.
+
+### Grafana
+
+Provides dashboards for:
+
+- CPU utilization
+- Memory utilization
+- Pod health
+- Replica counts
+- Application metrics
+- Infrastructure health
+
+### Alertmanager
+
+Routes operational alerts when configured thresholds or health conditions are triggered.
+
+---
+
+# 💾 Data Layer
+
+## PostgreSQL
+
+Transactional application data is stored in PostgreSQL, with **Amazon RDS PostgreSQL** as the AWS deployment target.
+
+Examples:
+
+```text
+Users
+Bookings
+Orders
+Payments
+Test Catalog
+```
+
+## Redis
+
+Redis provides caching and other short-lived application data where appropriate.
+
+---
+
+# 🌐 AWS Network Design
+
+```text
+                    Internet
+                       │
+                       ▼
+                 Route 53 / DNS
+                       │
+                       ▼
+                       ALB
+                       │
+            ┌──────────┴──────────┐
+            │      AWS VPC        │
+            │                     │
+     Public Subnets         Private Subnets
+            │                     │
+           ALB                EKS Nodes
+                                  │
+                         CareGrid Services
+                                  │
+                           ┌──────┴──────┐
+                           │             │
+                          RDS          Redis
+```
+
+The application and data layers are not intended to be directly exposed to the public internet.
+
+---
+
+# 🛠️ Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Cloud | AWS |
+| IaC | Terraform |
+| Containers | Docker |
+| Orchestration | Kubernetes / Amazon EKS |
+| Package Management | Helm |
+| CI | Jenkins |
+| Code Quality | SonarQube |
+| Dependency Security | OWASP Dependency Check |
+| Container Security | Trivy |
+| Registry | Amazon ECR |
+| CD | Argo CD |
+| Progressive Delivery | Argo Rollouts |
+| Monitoring | Prometheus |
+| Visualization | Grafana |
+| Alerting | Alertmanager |
+| Database | PostgreSQL / Amazon RDS |
+| Cache | Redis |
+| Secrets | AWS Secrets Manager |
+| Source Control | GitHub |
+
+---
+
+# 📁 Repository Structure
+
+```text
+CareGrid-E-Commerce/
+│
+├── 01-infrastructure-terraform/
+│   └── AWS infrastructure using Terraform
+│
+├── 02-microservices/
+│   └── CareGrid application services
+│
+├── 03-ci-cd-pipelines/
+│   └── Jenkins / DevSecOps pipeline configuration
+│
+├── 04-gitops-manifests/
+│   └── Kubernetes / Helm / Argo CD configuration
+│
+├── 05-observability/
+│   └── Prometheus / Grafana / alerting
+│
+├── 06-Testing/
+│   └── Application and infrastructure testing
+│
+└── README.md
+```
+
+---
+
+# 🔁 End-to-End Delivery Flow
+
+```text
+CODE
+ │
+ ▼
+GitHub
+ │
+ ▼
+Jenkins
+ │
+ ├── Test
+ ├── SonarQube
+ ├── OWASP
+ ├── Docker Build
+ ├── Trivy
+ └── SBOM
+ │
+ ▼
+Amazon ECR
+ │
+ ▼
+GitOps Repository
+ │
+ ▼
+Argo CD
+ │
+ ▼
+Argo Rollouts
+ │
+ ▼
+Amazon EKS
+ │
+ ▼
+CareGrid Microservices
+ │
+ ├── RDS PostgreSQL
+ └── Redis
+
+        │
+        ▼
+   Prometheus
+        │
+        ▼
+     Grafana
+        │
+        ▼
+   Alertmanager
+```
+
+---
+
+# 🎯 Engineering Goals
+
+CareGrid demonstrates practical implementation of:
+
+- Infrastructure as Code
+- Containerized microservices
+- Kubernetes orchestration
+- DevSecOps CI
+- Immutable container artifacts
+- GitOps continuous delivery
+- Progressive deployment
+- Automated rollback
+- Kubernetes autoscaling
+- Secrets management
+- Monitoring and alerting
+- AWS network isolation
+- Cloud-native application delivery
+
+---
+
+# 💰 Cost-Optimized Demonstration Environment
+
+This repository demonstrates **production engineering patterns**, but the live AWS environment can intentionally use smaller and cheaper resources for portfolio/lab purposes.
+
+For example:
+
+```text
+Demo / Development
+────────────────────
+Single NAT Gateway
+Small EKS node group
+Spot capacity where appropriate
+Small RDS instance
+Reduced retention
+Limited replicas
+```
+
+A full production deployment would normally increase redundancy and operational controls, for example:
+
+```text
+Production
+────────────────────
+Multi-AZ architecture
+Highly available NAT/egress strategy
+On-Demand baseline capacity
+Diversified compute capacity
+RDS Multi-AZ
+Automated backups
+Higher replica counts
+Stronger monitoring/alerting
+Controlled administrative access
+Dedicated environment isolation
+```
+
+This separation keeps the project affordable while preserving the architectural patterns required to discuss how it would be operated at production scale.
+
+---
+
+# ⚠️ Implementation Status
+
+This repository is being developed incrementally.
+
+Architecture diagrams and documentation may describe the **target state** before every component has been deployed.
+
+A component should only be considered implemented after its configuration exists in the repository and has been validated in the target environment.
+
+---
+
+# 👨‍💻 Author
+
+**Raj More**
+
+DevOps Engineer
+
+**Focus:** AWS • Kubernetes • Terraform • Docker • Jenkins • GitOps • CI/CD • DevSecOps
