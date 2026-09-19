@@ -1,169 +1,320 @@
-# CareGrid E-Commerce: Cloud Infrastructure Provisioning (Terraform)
 
-An automated, enterprise-grade Infrastructure-as-Code (IaC) implementation to provision the foundational AWS cloud environment for the **CareGrid E-Commerce** distributed microservices platform.
+<img width="1536" height="1024" alt="Terraform" src="https://github.com/user-attachments/assets/79eabc0c-3b29-4c1c-8bdb-c1e4b532836d" />
 
----
 
-## Architectural Highlights
+# 🏗️ CareGrid — AWS Infrastructure with Terraform
 
-* **VPC Topology**: Multi-AZ networking across 3 Availability Zones with strict Public/Private subnet tier segregation.
-* **Cost-Optimized Egress**: Single NAT Gateway deployment for non-production environments, cutting VPC egress baseline costs by ~67%.
-* **Resilient Compute**: EKS Managed Node Groups utilizing diversified **AWS Spot Instances** (`t3.medium`, `t3a.medium`, `c5.large`) for up to 70% cost reduction on stateless container workloads.
-* **Least-Privilege Security**: IAM Roles for Service Accounts (**IRSA**) via OpenID Connect (OIDC), eliminating long-lived node-level credentials.
-* **Modern Authentication**: Native **EKS Access Entries** enabled for API-driven RBAC governance without legacy `aws-auth` ConfigMap coupling.
+Terraform Infrastructure as Code for the **CareGrid E-Commerce** platform, providing the AWS networking, Kubernetes compute, identity, storage integration, and security foundation required by the application.
 
----
-
-## Provisioned Infrastructure Components
-
-| Layer | AWS Resource | Details / Specification |
-| --- | --- | --- |
-| **Networking** | AWS VPC | `10.0.0.0/16` CIDR across 3 AZs with ingress discovery tags |
-| **Orchestration** | Amazon EKS | Version `1.30` control plane with public/private API endpoints |
-| **Compute** | EC2 Spot Node Group | Auto-scaling worker fleet (Min: `2`, Desired: `2`, Max: `5`) |
-| **Storage** | EBS CSI Driver Add-on | Dynamically provisions encrypted `gp3` volumes for stateful pods |
-| **Identity & Access** | IAM & OIDC | Fine-grained IRSA roles for AWS Load Balancer Controller & EBS CSI |
+> **Region:** `ap-south-1` (Mumbai)  
+> **Environment:** `dev`  
+> **IaC:** Terraform  
+> **Platform:** Amazon EKS
 
 ---
 
-## Repository Structure
+## Architecture
+
+```text
+                         Internet
+                            │
+                     Application Traffic
+                            │
+             ┌──────── AWS VPC ────────┐
+             │       10.0.0.0/16       │
+             │                         │
+             │   Public Subnets        │
+             │   ├── 10.0.1.0/24       │
+             │   ├── 10.0.2.0/24       │
+             │   └── 10.0.3.0/24       │
+             │           │             │
+             │      NAT Gateway        │
+             │           │             │
+             │   Private Subnets       │
+             │   ├── 10.0.11.0/24      │
+             │   ├── 10.0.12.0/24      │
+             │   └── 10.0.13.0/24      │
+             │           │             │
+             │      Amazon EKS         │
+             │           │             │
+             │   Managed Node Group    │
+             │     Spot Instances      │
+             │           │             │
+             │   Kubernetes Workloads  │
+             │                         │
+             └─────────────────────────┘
+```
+
+The VPC spans **three Availability Zones**. Kubernetes workers run in private subnets while public subnets provide internet-facing load-balancer discovery and outbound connectivity through a single NAT Gateway.
+
+---
+
+## Infrastructure
+
+| Component | Implementation |
+|---|---|
+| Networking | VPC `10.0.0.0/16`, 3 public + 3 private subnets |
+| Egress | Single NAT Gateway for lower lab cost |
+| Kubernetes | Amazon EKS managed control plane |
+| Compute | Managed Spot Node Group |
+| Scaling | Min `2` • Desired `2` • Max `5` |
+| Instances | `t3.medium`, `t3a.medium`, `c5.large` |
+| Storage Driver | Amazon EBS CSI |
+| Identity | OIDC + IAM Roles for Service Accounts |
+| Load Balancing IAM | IRSA role for AWS Load Balancer Controller |
+| Cluster Access | EKS Access Entries |
+| Node Storage | Encrypted `gp3`, 20 GiB |
+| DNS | VPC DNS support + hostnames |
+
+### Kubernetes Add-ons
+
+```text
+CoreDNS
+kube-proxy
+Amazon VPC CNI
+Amazon EBS CSI Driver
+```
+
+The EBS CSI driver receives AWS permissions through its dedicated service account role rather than broad worker-node credentials.
+
+---
+
+## Network Layout
+
+```text
+VPC: 10.0.0.0/16
+
+Public
+├── 10.0.1.0/24
+├── 10.0.2.0/24
+└── 10.0.3.0/24
+
+Private
+├── 10.0.11.0/24
+├── 10.0.12.0/24
+└── 10.0.13.0/24
+```
+
+Subnet discovery tags prepare the network for Kubernetes load balancers:
+
+```text
+Public  → kubernetes.io/role/elb
+Private → kubernetes.io/role/internal-elb
+```
+
+---
+
+## Security
+
+The infrastructure currently applies these controls:
+
+- Worker nodes remain inside private subnets.
+- EBS volumes are encrypted.
+- OIDC enables pod-level AWS authorization through IRSA.
+- Separate roles exist for the EBS CSI driver and AWS Load Balancer Controller.
+- Cluster creator administration uses native EKS access management.
+- Additional node security-group rules permit internal cluster communication.
+- AWS provider default tags identify environment, project, repository, and Terraform ownership.
+
+> The Kubernetes API currently supports both public and private endpoints. Public-access restriction is a future hardening step.
+
+---
+
+## Cost Strategy
+
+This repository uses a **cost-optimized demonstration environment**, not production-scale capacity.
+
+```text
+Single NAT Gateway
+        +
+Spot Worker Nodes
+        +
+Small Initial Capacity
+        ↓
+Lower AWS Lab Cost
+```
+
+Spot capacity is diversified across multiple EC2 instance families to reduce dependency on a single Spot pool.
+
+For a real production environment, the same design can be extended with an On-Demand baseline, stronger NAT/egress redundancy, additional availability controls, backups, and stricter administrative access.
+
+---
+
+## Project Structure
 
 ```text
 01-infrastructure-terraform/
-├── versions.tf               # Terraform core & provider constraints
-├── variables.tf              # Input variable declarations
-├── terraform.tfvars.example  # Sample configuration values
-├── vpc.tf                    # VPC, subnets, route tables, and NAT gateway
-├── eks.tf                    # EKS cluster, managed spot node groups, addons
-├── iam-irsa.tf               # IAM OIDC roles for EBS CSI and ALB controller
-├── security-groups.tf        # Intra-cluster and external communication rules
-├── outputs.tf                # Cluster endpoints, IDs, and kubeconfig helper
-└── README.md                 # Infrastructure operations documentation
-
+│
+├── versions.tf
+├── variables.tf
+├── terraform.tfvars.example
+│
+├── vpc.tf
+├── eks.tf
+├── iam-irsa.tf
+├── security-groups.tf
+│
+├── outputs.tf
+└── README.md
 ```
+
+| File | Purpose |
+|---|---|
+| `versions.tf` | Terraform/provider requirements and AWS configuration |
+| `variables.tf` | Configurable infrastructure values |
+| `terraform.tfvars.example` | Example environment configuration |
+| `vpc.tf` | Network topology, routing and NAT |
+| `eks.tf` | Cluster, worker capacity and core add-ons |
+| `iam-irsa.tf` | Kubernetes service-account AWS permissions |
+| `security-groups.tf` | Additional worker-node network controls |
+| `outputs.tf` | IDs, endpoints and connection information |
 
 ---
 
-## Prerequisites
+## Deployment
 
-Ensure the following tools are installed and configured locally:
+### Prerequisites
 
-* [Terraform](https://developer.hashicorp.com/terraform/downloads) `>= 1.5.0`
-* [AWS CLI](https://aws.amazon.com/cli/) `>= 2.0` with administrative credentials configured
-* [kubectl](https://kubernetes.io/docs/tasks/tools/) compatible with Kubernetes `1.30`
-
----
-
-## Step-by-Step Deployment Guide
-
-### 1. Verify AWS Identity
-
-Confirm your active AWS CLI profile has the target permissions:
-
-```bash
-aws sts get-caller-identity
-
+```text
+Terraform >= 1.5
+AWS CLI >= 2
+kubectl
+AWS credentials with required permissions
 ```
 
-### 2. Prepare Environment Configuration
-
-Clone the repository, switch to this module, and instantiate your variables:
+### Configure
 
 ```bash
 cd 01-infrastructure-terraform
 cp terraform.tfvars.example terraform.tfvars
 
+aws sts get-caller-identity
 ```
 
-*(Optional)* Adjust variables in `terraform.tfvars` for your preferred AWS region or instance sizing.
-
-### 3. Initialize Working Directory
-
-Download required providers and external Terraform modules:
+### Validate
 
 ```bash
 terraform init
-
-```
-
-### 4. Code Formatting & Validation
-
-Enforce Terraform canonical styling and semantic validation:
-
-```bash
 terraform fmt -check
 terraform validate
-
 ```
 
-### 5. Review Execution Plan
-
-Inspect the resources slated for creation before committing changes:
+### Review
 
 ```bash
 terraform plan -out=tfplan
-
 ```
 
-### 6. Provision Infrastructure
-
-Deploy the plan (typically takes 12–18 minutes):
+### Provision
 
 ```bash
 terraform apply tfplan
-
 ```
+
+Always review the execution plan before applying infrastructure changes.
 
 ---
 
-## Cluster Authentication & Health Verification
-
-### 1. Register Local Kubeconfig
-
-Connect your local `kubectl` client using the generated Terraform output:
+## Connect to EKS
 
 ```bash
-aws eks --region ap-south-1 update-kubeconfig --name caregrid-eks
-
+aws eks \
+  --region ap-south-1 \
+  update-kubeconfig \
+  --name caregrid-eks
 ```
 
-### 2. Verify Worker Nodes
-
-Ensure all Spot worker instances are healthy and in `Ready` status:
+Validate the platform:
 
 ```bash
 kubectl get nodes -o wide
-
-```
-
-### 3. Inspect System Add-ons
-
-Verify that all core Kubernetes pods (CoreDNS, kube-proxy, VPC CNI, EBS CSI) are running:
-
-```bash
 kubectl get pods -n kube-system
+```
 
+Expected core services include:
+
+```text
+CoreDNS
+kube-proxy
+VPC CNI
+EBS CSI
 ```
 
 ---
 
-## Operational Notes & Troubleshooting
+## Terraform Outputs
 
-* **Node Group Spot Interruption**: The node group is configured with multiple instance types (`t3.medium`, `t3a.medium`, `c5.large`) across multiple AZs to mitigate Spot capacity reclamation risks.
-* **Unauthorized / RBAC Errors**: If running `kubectl` commands yields authorization failures, verify that the IAM identity running `terraform apply` matches the active identity in your local CLI. This module sets `enable_cluster_creator_admin_permissions = true`.
-* **Subnet Discovery Tags**: Public subnets carry `kubernetes.io/role/elb = 1` and private subnets carry `kubernetes.io/role/internal-elb = 1` to allow automated subnet discovery by the AWS Load Balancer Controller.
-
----
-
-## Teardown Procedure
-
-To avoid unwanted cloud infrastructure billing when testing is complete:
+After provisioning:
 
 ```bash
-# Step 1: Remove active Kubernetes services/ingresses provisioning external ALBs
-kubectl delete ingress --all --all-namespaces
-
-# Step 2: Destroy all managed infrastructure
-terraform destroy -auto-approve
-
+terraform output
 ```
+
+The configuration exposes:
+
+```text
+cluster_id
+cluster_endpoint
+cluster_certificate_authority_data
+vpc_id
+private_subnets
+public_subnets
+aws_lbc_role_arn
+configure_kubectl
+```
+
+These values are consumed by later Kubernetes and platform configuration.
+
+---
+
+## Planned Infrastructure
+
+The following resources belong to the CareGrid target architecture but are **not yet provisioned by the current Terraform code**:
+
+```text
+Amazon ECR
+Amazon RDS PostgreSQL
+Amazon ElastiCache Redis
+Amazon S3
+AWS Secrets Manager
+Remote Terraform State
+```
+
+They will be added incrementally before this infrastructure layer is considered complete.
+
+---
+
+## Cleanup
+
+Remove Kubernetes resources that created external AWS infrastructure before destroying the environment:
+
+```bash
+kubectl delete ingress --all --all-namespaces
+terraform destroy
+```
+
+Review the destroy plan before confirmation to avoid deleting resources you intend to keep.
+
+---
+
+## Infrastructure Flow
+
+```text
+Terraform Configuration
+        ↓
+terraform init
+        ↓
+terraform validate
+        ↓
+terraform plan
+        ↓
+terraform apply
+        ↓
+AWS Infrastructure
+        ↓
+Amazon EKS
+        ↓
+Kubernetes Platform
+```
+
+**Current status:** VPC + EKS foundation implemented. Data, registry, secrets, and remote-state layers are the next infrastructure milestones.
