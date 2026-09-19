@@ -1,32 +1,37 @@
-# IAM Roles for Service Accounts (IRSA)
-# Grants fine-grained AWS permissions directly to Kubernetes pods without worker node instance profile bloat.
-
 module "ebs_csi_irsa_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  version = "~> 6.0"
 
-  role_name             = "${var.cluster_name}-ebs-csi-irsa"
+  name = "${var.project_name}-${var.environment}-ebs-csi"
+
   attach_ebs_csi_policy = true
 
   oidc_providers = {
     main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
+      provider_arn = module.eks.oidc_provider_arn
+
+      namespace_service_accounts = [
+        "kube-system:ebs-csi-controller-sa"
+      ]
     }
   }
 }
 
 module "load_balancer_controller_irsa_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  version = "~> 6.0"
 
-  role_name                              = "${var.cluster_name}-aws-lbc-irsa"
+  name = "${var.project_name}-${var.environment}-aws-lbc"
+
   attach_load_balancer_controller_policy = true
 
   oidc_providers = {
     main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
+      provider_arn = module.eks.oidc_provider_arn
+
+      namespace_service_accounts = [
+        "kube-system:aws-load-balancer-controller"
+      ]
     }
   }
 }
