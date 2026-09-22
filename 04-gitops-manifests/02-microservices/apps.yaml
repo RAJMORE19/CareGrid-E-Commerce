@@ -4,7 +4,7 @@ metadata:
   name: auth-service
   namespace: caregrid
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: auth-service
@@ -18,6 +18,30 @@ spec:
           image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/auth-service:latest
           ports:
             - containerPort: 5001
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
           env:
             - name: PORT
               value: "5001"
@@ -40,7 +64,7 @@ metadata:
   name: cart-service
   namespace: caregrid
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: cart-service
@@ -54,6 +78,30 @@ spec:
           image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/cart-service:latest
           ports:
             - containerPort: 5002
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
           env:
             - name: REDIS_HOST
               value: "redis"
@@ -78,7 +126,7 @@ metadata:
   name: catalog-service
   namespace: caregrid
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: catalog-service
@@ -92,19 +140,33 @@ spec:
           image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/catalog-service:latest
           ports:
             - containerPort: 5003
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5003
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5003
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
           env:
             - name: PORT
               value: "5003"
-            - name: DB_HOST
-              value: "postgres"
-            - name: DB_PORT
-              value: "5432"
-            - name: DB_USER
-              value: "caregrid"
-            - name: DB_PASSWORD
-              value: "secretpassword"
-            - name: DB_NAME
-              value: "caregrid_db"
 ---
 apiVersion: v1
 kind: Service
@@ -124,7 +186,7 @@ metadata:
   name: booking-service
   namespace: caregrid
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: booking-service
@@ -138,6 +200,30 @@ spec:
           image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/booking-service:latest
           ports:
             - containerPort: 5004
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5004
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5004
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
           env:
             - name: DYNAMODB_ENDPOINT
               value: "http://dynamodb-local:8000"
@@ -162,7 +248,7 @@ metadata:
   name: payment-service
   namespace: caregrid
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: payment-service
@@ -176,6 +262,30 @@ spec:
           image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/payment-service:latest
           ports:
             - containerPort: 5005
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5005
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5005
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
 ---
 apiVersion: v1
 kind: Service
@@ -195,7 +305,7 @@ metadata:
   name: notification-service
   namespace: caregrid
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: notification-service
@@ -209,6 +319,30 @@ spec:
           image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/notification-service:latest
           ports:
             - containerPort: 5006
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5006
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5006
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
 ---
 apiVersion: v1
 kind: Service
@@ -228,7 +362,7 @@ metadata:
   name: frontend
   namespace: caregrid
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: frontend
@@ -242,6 +376,25 @@ spec:
           image: 466124992944.dkr.ecr.ap-south-1.amazonaws.com/caregrid/frontend:latest
           ports:
             - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "32Mi"
+            limits:
+              cpu: "150m"
+              memory: "128Mi"
 ---
 apiVersion: v1
 kind: Service
