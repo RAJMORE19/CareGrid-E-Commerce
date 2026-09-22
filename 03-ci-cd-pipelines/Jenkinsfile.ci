@@ -48,8 +48,7 @@ pipeline {
                     sh """
                         echo "[INFO] Packaging container image..."
                         docker build -t ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG} .
-                        docker tag ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG} ${env.FULL_IMAGE_NAME}:latest
-                    """
+                                            """
                 }
             }
         }
@@ -88,7 +87,7 @@ pipeline {
                             -w /app \
                             python:3.11-slim bash -c "
                                 pip install --no-cache-dir pip-audit && \
-                                pip-audit -r requirements.txt || true
+                                pip-audit -r requirements.txt
                             "
                     '''
                 }
@@ -114,14 +113,14 @@ pipeline {
             steps {
                 sh """
                     echo "[INFO] Spanning temporary test container to verify startup stability..."
-                    docker run -d --name ${env.TEST_CONTAINER} -p ${env.APP_TEST_PORT}:8000 ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}
+                    docker run -d --name ${env.TEST_CONTAINER} -p ${env.APP_TEST_PORT}:5004 ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}
 
                     sleep 5
 
                     docker ps | grep ${env.TEST_CONTAINER} || { echo "[ERROR] Container crashed on startup!"; exit 1; }
 
                     echo "[INFO] Testing HTTP responsiveness..."
-                    curl -s -f http://localhost:${env.APP_TEST_PORT}/ || echo "[WARN] Root endpoint pinged. Health verified."
+                    curl --fail --silent --show-error --retry 5 --retry-connrefused http://localhost:${env.APP_TEST_PORT}/health
                 """
             }
         }
@@ -138,7 +137,6 @@ pipeline {
 
                     echo "[INFO] Pushing verified container artifacts..."
                     docker push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}
-                    docker push ${env.FULL_IMAGE_NAME}:latest
                 """
             }
         }
@@ -150,8 +148,7 @@ pipeline {
                 echo "[INFO] Cleanup: Removing local test container & runner images..."
                 docker rm -f ${env.TEST_CONTAINER} || true
                 docker rmi ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG} || true
-                docker rmi ${env.FULL_IMAGE_NAME}:latest || true
-            """
+                            """
         }
         success {
             echo "=========================================================================="
