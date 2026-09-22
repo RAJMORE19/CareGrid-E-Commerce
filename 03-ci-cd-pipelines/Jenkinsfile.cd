@@ -1,0 +1,68 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'DOCKER_IMAGE_TAG', defaultValue: 'v1.0.1', description: 'Enter Docker image tag to deploy')
+    }
+
+    environment {
+        GIT_REPO_URL    = 'https://github.com/RAJMORE19/CareGrid-E-Commerce.git'
+        TARGET_MANIFEST = '04-gitops-manifests/02-microservices/apps.yaml'
+    }
+
+    stages {
+        stage('Workspace cleanup') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Git: Code Checkout') {
+            steps {
+                git branch: 'main', url: "${env.GIT_REPO_URL}"
+            }
+        }
+
+        stage('Verify: Docker Image Tags') {
+            steps {
+                sh """
+                    echo "[INFO] Validating deployment image tag: ${params.DOCKER_IMAGE_TAG}"
+                    if [ -z "${params.DOCKER_IMAGE_TAG}" ]; then
+                        echo "[ERROR] DOCKER_IMAGE_TAG cannot be empty!"
+                        exit 1
+                    fi
+                """
+            }
+        }
+
+        stage('Update: Kubernetes manifests') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                    sh """
+                        echo "[INFO] Configuring Git committer..."
+                        git config user.name "CareGrid CD Bot"
+                        git config user.email "cd-bot@caregrid.internal"
+
+                        echo "[INFO] Updating booking-service image tag..."
+                        sed -i -E "s|(image: .*/caregrid-booking-service:).*|\\1${params.DOCKER_IMAGE_TAG}\vert{}g" ${env.TARGET_MANIFEST}
+
+                        echo "[INFO] Staging and pushing updated manifest..."
+                        git add ${env.TARGET_MANIFEST}
+                        git commit -m "chore(cd): update booking-service to ${params.DOCKER_IMAGE_TAG} [skip ci]" || echo "No manifest change detected"
+                        
+                        git push https://${GIT_TOKEN}@github.com/RAJMORE19/CareGrid-E-Commerce.git HEAD:main
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "=========================================================================="
+            echo " [CD SUCCESS] Manifest successfully updated in GitHub."
+            echo " ArgoCD will automatically pull and sync this version on EKS."
+            echo "=========================================================================="
+        }
+    }
+}
