@@ -1,0 +1,11 @@
+# Copy to backend.tf after creating the remote-state bucket.
+# Keep state infrastructure separate from the workload state it protects.
+terraform {
+  backend "s3" {
+    bucket       = "REPLACE_WITH_TERRAFORM_STATE_BUCKET"
+    key          = "caregrid/dev/terraform.tfstate"
+    region       = "ap-south-1"
+    encrypt      = true
+    use_lockfile = true
+  }
+}
