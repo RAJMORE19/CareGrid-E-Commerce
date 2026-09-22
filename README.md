@@ -41,8 +41,6 @@ Developer → GitHub → Jenkins
               │
             Trivy
               │
-             SBOM
-              │
          Amazon ECR
 
 
