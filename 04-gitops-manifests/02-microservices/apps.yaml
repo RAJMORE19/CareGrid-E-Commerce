@@ -249,7 +249,7 @@ metadata:
   name: frontend
   namespace: caregrid
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: frontend
   ports:
