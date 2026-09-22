@@ -46,7 +46,7 @@ output "application_secret_arn" {
 }
 
 output "aws_load_balancer_controller_role_arn" {
-  value = module.load_balancer_controller_irsa_role.iam_role_arn
+  value = module.load_balancer_controller_irsa_role.arn
 }
 
 output "configure_kubectl" {

@@ -8,9 +8,9 @@ resource "aws_elasticache_replication_group" "redis" {
 
   description = "CareGrid application cache"
 
-  engine         = "redis"
-  node_type      = var.redis_node_type
-  port           = 6379
+  engine    = "redis"
+  node_type = var.redis_node_type
+  port      = 6379
 
   num_cache_clusters = 1
 

@@ -1,5 +1,9 @@
+# ============================================================
+# EBS CSI DRIVER - IRSA ROLE
+# ============================================================
+
 module "ebs_csi_irsa_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.0"
 
   name = "${var.project_name}-${var.environment}-ebs-csi"
@@ -17,8 +21,13 @@ module "ebs_csi_irsa_role" {
   }
 }
 
+
+# ============================================================
+# AWS LOAD BALANCER CONTROLLER - IRSA ROLE
+# ============================================================
+
 module "load_balancer_controller_irsa_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.0"
 
   name = "${var.project_name}-${var.environment}-aws-lbc"
