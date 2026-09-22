@@ -5,19 +5,7 @@
 .profile
 .bashrc
 .bash_logout
--la
-.bash_history
-.bash_logout
-.bashrc
-.lesshst
-.profile
-.docker
--la
-.terraform/
-*.tfstate
-*.tfstate.backup
-.terraform.lock.hcl
-kubectl
+.docker/
 .env
 *.pem
 *.key
@@ -28,3 +16,5 @@ kubectl
 **/*.tfstate.*
 **/terraform.tfvars
 **/.terraform.tfstate.lock.info
+
+# Keep .terraform.lock.hcl committed for reproducible provider versions
