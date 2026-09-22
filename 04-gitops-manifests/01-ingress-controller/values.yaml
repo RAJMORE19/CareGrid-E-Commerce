@@ -1,0 +1,8 @@
+clusterName: caregrid-eks
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::466124992944:role/caregrid-dev-aws-lbc-d683b57ba08499efddc239789c"
+region: ap-south-1
+vpcId: vpc-081d0b9ea0b96d6f5
