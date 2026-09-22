@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'DOCKER_IMAGE_TAG', defaultValue: 'v1.0.1', description: 'Enter Docker image tag to deploy')
+        string(name: 'DOCKER_IMAGE_TAG', defaultValue: '', description: 'Enter Docker image tag to deploy')
     }
 
     environment {
@@ -44,7 +44,7 @@ pipeline {
                         git config user.email "cd-bot@caregrid.internal"
 
                         echo "[INFO] Updating booking-service image tag..."
-                        sed -i -E "s|(image: .*/caregrid-booking-service:).*|\\1${params.DOCKER_IMAGE_TAG}\vert{}g" ${env.TARGET_MANIFEST}
+                        sed -i -E "s|(image: .*/caregrid/booking-service:)[^[:space:]]+|\\1${params.DOCKER_IMAGE_TAG}|g" ${env.TARGET_MANIFEST}
 
                         echo "[INFO] Staging and pushing updated manifest..."
                         git add ${env.TARGET_MANIFEST}
